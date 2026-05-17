@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Participant } from '../types';
 import { getAvatarColor } from '../lib/data';
 import { supabase } from '../lib/supabase';
@@ -20,6 +21,19 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const confirmRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     if (step === 'pin-entry' || step === 'pin-setup') {
@@ -156,19 +170,27 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
             <p className="identity-subtitle">PREDICTION POOL</p>
             <p className="identity-desc">Select your identity to start predicting</p>
           </div>
-          <div className="identity-grid">
-            {participants.map((p) => {
-              const color = getAvatarColor(p.name);
-              return (
-                <button key={p.id} className="identity-card" onClick={() => handleCardClick(p)}>
-                  <div className="identity-avatar" style={{ background: color }}>
-                    {p.photo_url ? <img src={p.photo_url} alt={p.name} /> : <span>{p.name.charAt(0).toUpperCase()}</span>}
-                  </div>
-                  <span className="identity-name">{p.display_name || p.name}</span>
-                  <span className="identity-cta">Play as {p.display_name || p.name}</span>
-                </button>
-              );
-            })}
+          <div className="carousel-wrapper">
+            <button className="carousel-btn left" onClick={scrollLeft}>
+              <ChevronLeft size={24} />
+            </button>
+            <div className="identity-carousel" ref={carouselRef}>
+              {participants.map((p) => {
+                const color = getAvatarColor(p.name);
+                return (
+                  <button key={p.id} className="identity-card" onClick={() => handleCardClick(p)}>
+                    <div className="identity-avatar" style={{ background: color }}>
+                      {p.photo_url ? <img src={p.photo_url} alt={p.name} /> : <span>{p.name.charAt(0).toUpperCase()}</span>}
+                    </div>
+                    <span className="identity-name">{p.display_name || p.name}</span>
+                    <span className="identity-cta">Play as {p.display_name || p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button className="carousel-btn right" onClick={scrollRight}>
+              <ChevronRight size={24} />
+            </button>
           </div>
         </div>
       </div>
