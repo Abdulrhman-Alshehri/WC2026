@@ -22,13 +22,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-en);line-heig
 .carousel-btn.right{right:-20px}
 .identity-carousel{display:flex;gap:15px;overflow-x:auto;scroll-behavior:smooth;padding:20px 10px;scrollbar-width:none;-ms-overflow-style:none}
 .identity-carousel::-webkit-scrollbar{display:none}
-.identity-card{flex:0 0 auto;width:160px;height:200px;background:#ffffff;border:2px solid var(--border);border-radius:var(--radius);padding:20px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:400ms;text-align:center}
+.identity-card{flex:0 0 auto;width:250px;height:320px;background:#ffffff;border:2px solid var(--border);border-radius:var(--radius);padding:24px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;cursor:pointer;transition:400ms;text-align:center}
 .identity-card:hover{transform:scale(1.1);border-color:#3150ff;box-shadow:0 8px 24px rgba(49,80,255,0.12)}
 .identity-carousel:hover > .identity-card:not(:hover){filter:blur(5px);transform:scale(0.9)}
-.identity-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:bold;color:#ffffff}
+.identity-avatar{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:bold;color:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
 .identity-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
-.identity-name{font-size:.95rem;font-weight:bold;color:#1a247c}
-.identity-cta{font-size:.7rem;color:#3150ff;letter-spacing:1px;text-transform:uppercase}
+.identity-name{font-size:1.4rem;font-weight:bold;color:#1a247c}
+.identity-cta{font-size:.9rem;color:#3150ff;letter-spacing:1px;text-transform:uppercase;font-weight:bold}
 
 /* PIN SCREEN */
 .pin-back-btn{background:none;border:none;color:#3150ff;font-size:.9rem;cursor:pointer;margin-bottom:24px;padding:4px 8px}
