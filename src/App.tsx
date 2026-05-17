@@ -123,8 +123,8 @@ function App() {
       return;
     }
 
-    if (!data.success) {
-      showToast('Failed: ' + data.error);
+    if (!data || !data.success) {
+      showToast('Failed: ' + (data?.error || 'Unknown error'));
       return;
     }
 
