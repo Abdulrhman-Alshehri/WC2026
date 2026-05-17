@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Participant, Match, Prediction } from './types';
 import { DEMO_PARTICIPANTS, DEMO_MATCHES, DEMO_LEADERBOARD } from './lib/data';
+import { supabase } from './lib/supabase';
 import IdentitySelector from './components/IdentitySelector';
 import TopNav from './components/TopNav';
 import Dashboard from './components/Dashboard';
@@ -23,11 +24,26 @@ function App() {
   const [predictions, setPredictions] = useState<Map<string, Prediction>>(new Map());
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>(DEMO_PARTICIPANTS);
 
-  // Use demo data (will be replaced by Supabase queries)
+  // Fetch participants from Supabase
+  useEffect(() => {
+    async function fetchParticipants() {
+      const { data, error } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      if (!error && data && data.length > 0) {
+        setParticipants(data as Participant[]);
+      }
+    }
+    fetchParticipants();
+  }, []);
+
+  // Use demo data for matches/leaderboard (will be replaced by Supabase queries)
   const matches = DEMO_MATCHES;
   const leaderboard = DEMO_LEADERBOARD;
-  const participants = DEMO_PARTICIPANTS;
 
   const handleSelectIdentity = useCallback((participant: Participant) => {
     setCurrentUser(participant);

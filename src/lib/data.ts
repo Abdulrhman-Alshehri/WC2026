@@ -2,17 +2,17 @@ import { Match, Participant, LeaderboardEntry } from '../types';
 
 // Demo participants for the identity selector
 export const DEMO_PARTICIPANTS: Participant[] = [
-  { id: '1', name: 'Abdulrhman', display_name: 'Abdulrhman', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '2', name: 'Mohammed', display_name: 'Mohammed', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '3', name: 'Abdullah', display_name: 'Abdullah', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '4', name: 'Khalid', display_name: 'Khalid', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '5', name: 'Omar', display_name: 'Omar', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '6', name: 'Faisal', display_name: 'Faisal', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '7', name: 'Sultan', display_name: 'Sultan', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '8', name: 'Turki', display_name: 'Turki', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '9', name: 'Nasser', display_name: 'Nasser', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '10', name: 'Saad', display_name: 'Saad', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
-  { id: '11', name: 'Bandar', display_name: 'Bandar', photo_url: null, telegram_user: null, is_active: true, created_at: '' },
+  { id: '1', name: 'Abdulrhman', display_name: 'Abdulrhman', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '2', name: 'Mohammed', display_name: 'Mohammed', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '3', name: 'Abdullah', display_name: 'Abdullah', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '4', name: 'Khalid', display_name: 'Khalid', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '5', name: 'Omar', display_name: 'Omar', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '6', name: 'Faisal', display_name: 'Faisal', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '7', name: 'Sultan', display_name: 'Sultan', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '8', name: 'Turki', display_name: 'Turki', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '9', name: 'Nasser', display_name: 'Nasser', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '10', name: 'Saad', display_name: 'Saad', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
+  { id: '11', name: 'Bandar', display_name: 'Bandar', photo_url: null, telegram_user: null, pin: null, is_active: true, created_at: '' },
 ];
 
 // Demo matches for the dashboard
