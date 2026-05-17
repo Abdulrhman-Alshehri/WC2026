@@ -43,9 +43,6 @@ function App() {
         </section>
       </main>
       
-      <div className="arabic-demo arabic-font">
-        تجربة الخط العربي - كأس العالم 2026
-      </div>
     </div>
   );
 }
