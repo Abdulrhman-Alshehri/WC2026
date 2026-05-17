@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Participant, Match, Prediction } from './types';
-import { DEMO_PARTICIPANTS, DEMO_MATCHES, DEMO_LEADERBOARD } from './lib/data';
+import { Participant, Match, Prediction, LeaderboardEntry } from './types';
+import { DEMO_PARTICIPANTS } from './lib/data';
 import { supabase } from './lib/supabase';
 import IdentitySelector from './components/IdentitySelector';
 import TopNav from './components/TopNav';
@@ -25,25 +25,67 @@ function App() {
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [participants, setParticipants] = useState<Participant[]>(DEMO_PARTICIPANTS);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
-  // Fetch participants from Supabase
+  // Load public data on mount
   useEffect(() => {
-    async function fetchParticipants() {
-      const { data, error } = await supabase
-        .from('participants')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-      if (!error && data && data.length > 0) {
-        setParticipants(data as Participant[]);
+    async function loadPublicData() {
+      // Fetch participants
+      const { data: pData } = await supabase.from('participants').select('*').eq('is_active', true).order('name');
+      if (pData && pData.length > 0) setParticipants(pData as Participant[]);
+
+      // Fetch matches
+      const { data: mData } = await supabase.from('matches').select('*').order('kickoff_utc');
+      if (mData) setMatches(mData as Match[]);
+
+      // Fetch leaderboard (wallets joined with participants)
+      const { data: wData } = await supabase
+        .from('wallets')
+        .select(`
+          balance,
+          participant_id,
+          participants ( name, display_name, photo_url )
+        `)
+        .order('balance', { ascending: false });
+
+      if (wData) {
+        const lb: LeaderboardEntry[] = wData.map((w: any, index: number) => ({
+          participant_id: w.participant_id,
+          name: w.participants.name,
+          display_name: w.participants.display_name,
+          photo_url: w.participants.photo_url,
+          balance: w.balance,
+          rank: index + 1,
+        }));
+        setLeaderboard(lb);
       }
     }
-    fetchParticipants();
+    loadPublicData();
   }, []);
 
-  // Use demo data for matches/leaderboard (will be replaced by Supabase queries)
-  const matches = DEMO_MATCHES;
-  const leaderboard = DEMO_LEADERBOARD;
+  // Load user specific data when logged in
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    async function loadUserData() {
+      // Load wallet
+      const { data: wallet } = await supabase.from('wallets').select('*').eq('participant_id', currentUser.id).single();
+      if (wallet) {
+        setBalance(wallet.balance);
+        setInPlay(wallet.in_play);
+      }
+      
+      // Load predictions
+      const { data: preds } = await supabase.from('predictions').select('*').eq('participant_id', currentUser.id);
+      if (preds) {
+        const predMap = new Map<string, Prediction>();
+        preds.forEach(p => predMap.set(p.match_id, p));
+        setPredictions(predMap);
+      }
+    }
+    loadUserData();
+  }, [currentUser]);
 
   const handleSelectIdentity = useCallback((participant: Participant) => {
     setCurrentUser(participant);
@@ -63,10 +105,36 @@ function App() {
     setPredictingMatch(match);
   }, []);
 
-  const handleSubmitPrediction = useCallback((matchId: string, prediction: string, stake: number) => {
+  const handleSubmitPrediction = useCallback(async (matchId: string, prediction: string, stake: number) => {
+    if (!currentUser) return;
+    
+    setPredictingMatch(null);
+    showToast('Processing prediction...');
+
+    const { data, error } = await supabase.rpc('place_prediction', {
+      p_participant_id: currentUser.id,
+      p_match_id: matchId,
+      p_prediction: prediction,
+      p_stake: stake
+    });
+
+    if (error) {
+      showToast('Error placing prediction: ' + error.message);
+      return;
+    }
+
+    if (!data.success) {
+      showToast('Failed: ' + data.error);
+      return;
+    }
+
+    // Success! Update local state
+    setBalance(data.new_balance);
+    setInPlay(prev => prev + stake);
+    
     const newPrediction: Prediction = {
-      id: `pred-${Date.now()}`,
-      participant_id: currentUser?.id || '',
+      id: data.prediction_id,
+      participant_id: currentUser.id,
       match_id: matchId,
       prediction: prediction as Prediction['prediction'],
       stake,
@@ -82,17 +150,13 @@ function App() {
       return next;
     });
 
-    setBalance(prev => prev - stake);
-    setInPlay(prev => prev + stake);
-    setPredictingMatch(null);
-
-    // Show toast
     const matchObj = matches.find(m => m.id === matchId);
     const teamName = prediction.includes('HOME')
       ? matchObj?.home_team
       : prediction === 'DRAW' ? 'Draw'
       : matchObj?.away_team;
-    showToast(`Prediction locked! Staking ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
+      
+    showToast(`Prediction locked! Staked ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
   }, [currentUser, matches]);
 
   const showToast = (message: string) => {
