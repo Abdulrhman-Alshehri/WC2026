@@ -130,7 +130,8 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
     const { error: dbError } = await supabase
       .from('participants')
       .update({ pin: entered })
-      .eq('id', selectedUser.id);
+      .eq('id', selectedUser.id)
+      .select('id');
 
     if (dbError) {
       setError('Failed to save PIN. Try again.');

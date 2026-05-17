@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Participant, Match, Prediction, LeaderboardEntry } from './types';
 import { DEMO_PARTICIPANTS } from './lib/data';
 import { supabase } from './lib/supabase';
@@ -10,6 +11,7 @@ import PredictionHistory from './components/PredictionHistory';
 import PredictionModal from './components/PredictionModal';
 
 function App() {
+  const queryClient = useQueryClient();
   const [currentUser, setCurrentUser] = useState<Participant | null>(() => {
     const saved = localStorage.getItem('wc2026_user');
     if (saved) {
@@ -19,73 +21,98 @@ function App() {
   });
 
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const [balance, setBalance] = useState(1000000);
-  const [inPlay, setInPlay] = useState(0);
-  const [predictions, setPredictions] = useState<Map<string, Prediction>>(new Map());
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>(DEMO_PARTICIPANTS);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
-  // Load public data on mount
-  useEffect(() => {
-    async function loadPublicData() {
-      // Fetch participants
-      const { data: pData } = await supabase.from('participants').select('*').eq('is_active', true).order('name');
-      if (pData && pData.length > 0) setParticipants(pData as Participant[]);
+  // --- REACT QUERY: PUBLIC DATA ---
+  
+  const { data: participants = DEMO_PARTICIPANTS } = useQuery({
+    queryKey: ['participants'],
+    queryFn: async () => {
+      const { data } = await supabase.from('participants').select('id, name, display_name, photo_url, pin').eq('is_active', true).order('name');
+      return (data as Participant[]) || [];
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
-      // Fetch matches
-      const { data: mData } = await supabase.from('matches').select('*').order('kickoff_utc');
-      if (mData) setMatches(mData as Match[]);
-
-      // Fetch leaderboard (wallets joined with participants)
-      const { data: wData } = await supabase
-        .from('wallets')
-        .select(`
-          balance,
-          participant_id,
-          participants ( name, display_name, photo_url )
-        `)
-        .order('balance', { ascending: false });
-
-      if (wData) {
-        const lb: LeaderboardEntry[] = wData.map((w: any, index: number) => ({
-          participant_id: w.participant_id,
-          name: w.participants.name,
-          display_name: w.participants.display_name,
-          photo_url: w.participants.photo_url,
-          balance: w.balance,
-          rank: index + 1,
-        }));
-        setLeaderboard(lb);
+  const { data: matches = [] } = useQuery({
+    queryKey: ['matches'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('matches').select('id, home_team, away_team, kickoff_utc, status, home_score, away_score, group_name, stadium, match_date').order('kickoff_utc');
+      if (error) {
+        console.error("Supabase Error fetching matches:", error.message, error.details);
       }
-    }
-    loadPublicData();
-  }, []);
+      return (data as Match[]) || [];
+    },
+  });
 
-  // Load user specific data when logged in
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    async function loadUserData() {
-      // Load wallet
-      const { data: wallet } = await supabase.from('wallets').select('*').eq('participant_id', currentUser.id).single();
-      if (wallet) {
-        setBalance(wallet.balance);
-        setInPlay(wallet.in_play);
-      }
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: async () => {
+      // Ideally this hits a leaderboard_view. For now, doing the joined select:
+      const { data } = await supabase.from('wallets').select('balance, participant_id, in_play, participants ( name, display_name, photo_url )').order('balance', { ascending: false });
+      if (!data) return [];
+      return data.map((w: any, index: number) => ({
+        participant_id: w.participant_id,
+        name: w.participants.name,
+        display_name: w.participants.display_name,
+        photo_url: w.participants.photo_url,
+        balance: w.balance,
+        rank: index + 1,
+      }));
+    },
+  });
+
+  // --- REACT QUERY: USER DATA ---
+
+  const { data: userData } = useQuery({
+    queryKey: ['userData', currentUser?.id],
+    enabled: !!currentUser,
+    queryFn: async () => {
+      const [
+        { data: wallet },
+        { data: preds }
+      ] = await Promise.all([
+        supabase.from('wallets').select('balance, in_play').eq('participant_id', currentUser!.id).single(),
+        supabase.from('predictions').select('id, match_id, prediction, stake, status, payout, submitted_at, updated_at').eq('participant_id', currentUser!.id)
+      ]);
       
-      // Load predictions
-      const { data: preds } = await supabase.from('predictions').select('*').eq('participant_id', currentUser.id);
-      if (preds) {
-        const predMap = new Map<string, Prediction>();
-        preds.forEach(p => predMap.set(p.match_id, p));
-        setPredictions(predMap);
-      }
+      const predMap = new Map<string, Prediction>();
+      if (preds) preds.forEach(p => predMap.set(p.match_id, p));
+
+      return {
+        balance: wallet?.balance ?? 1000000,
+        inPlay: wallet?.in_play ?? 0,
+        predictions: predMap
+      };
     }
-    loadUserData();
-  }, [currentUser]);
+  });
+
+  const balance = userData?.balance ?? 1000000;
+  const inPlay = userData?.inPlay ?? 0;
+  const predictions = userData?.predictions ?? new Map<string, Prediction>();
+
+  // --- REALTIME SUBSCRIPTIONS ---
+  useEffect(() => {
+    const channel = supabase.channel('app-realtime')
+      // Listen for match updates (scores, status)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['matches'] });
+      })
+      // Listen for wallet updates (if we are logged in) to see payouts live
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'wallets' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+        if (currentUser) {
+          queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, currentUser]);
+
 
   const handleSelectIdentity = useCallback((participant: Participant) => {
     setCurrentUser(participant);
@@ -111,29 +138,9 @@ function App() {
     setPredictingMatch(null);
     showToast('Processing prediction...');
 
-    const { data, error } = await supabase.rpc('place_prediction', {
-      p_participant_id: currentUser.id,
-      p_match_id: matchId,
-      p_prediction: prediction,
-      p_stake: stake
-    });
-
-    if (error) {
-      showToast('Error placing prediction: ' + error.message);
-      return;
-    }
-
-    if (!data || !data.success) {
-      showToast('Failed: ' + (data?.error || 'Unknown error'));
-      return;
-    }
-
-    // Success! Update local state
-    setBalance(data.new_balance);
-    setInPlay(prev => prev + stake);
-    
-    const newPrediction: Prediction = {
-      id: data.prediction_id,
+    // Optimistic Update
+    const optimisticPrediction: Prediction = {
+      id: `temp-${Date.now()}`,
       participant_id: currentUser.id,
       match_id: matchId,
       prediction: prediction as Prediction['prediction'],
@@ -144,11 +151,48 @@ function App() {
       updated_at: new Date().toISOString(),
     };
 
-    setPredictions(prev => {
-      const next = new Map(prev);
-      next.set(matchId, newPrediction);
-      return next;
+    queryClient.setQueryData(['userData', currentUser.id], (old: any) => {
+      if (!old) return old;
+      const nextPreds = new Map(old.predictions);
+      nextPreds.set(matchId, optimisticPrediction);
+      return {
+        ...old,
+        balance: old.balance - stake,
+        inPlay: old.inPlay + stake,
+        predictions: nextPreds
+      };
     });
+
+    const { data, error } = await supabase.rpc('place_prediction', {
+      p_participant_id: currentUser.id,
+      p_match_id: matchId,
+      p_prediction: prediction,
+      p_stake: stake
+    });
+
+    if (error || !data || !data.success) {
+      console.error("RPC Failed:", error || data?.error);
+      // Rollback on error
+      queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
+      showToast(error ? 'Error placing prediction: ' + error.message : 'Failed: ' + (data?.error || 'Unknown error'));
+      return;
+    }
+
+    // Success! Update local state with real ID and actual returned balance
+    queryClient.setQueryData(['userData', currentUser.id], (old: any) => {
+      if (!old) return old;
+      const nextPreds = new Map(old.predictions);
+      const updatedPred = { ...optimisticPrediction, id: data.prediction_id };
+      nextPreds.set(matchId, updatedPred);
+      return {
+        ...old,
+        balance: data.new_balance,
+        // keep inPlay as is, it's correct from optimistic
+        predictions: nextPreds
+      };
+    });
+
+    queryClient.invalidateQueries({ queryKey: ['leaderboard'] }); // update our balance in leaderboard too
 
     const matchObj = matches.find(m => m.id === matchId);
     const teamName = prediction.includes('HOME')
@@ -157,14 +201,13 @@ function App() {
       : matchObj?.away_team;
       
     showToast(`Prediction locked! Staked ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
-  }, [currentUser, matches]);
+  }, [currentUser, matches, queryClient]);
 
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Identity selector screen
   if (!currentUser) {
     return (
       <IdentitySelector
@@ -174,7 +217,6 @@ function App() {
     );
   }
 
-  // Build match lookup for history
   const matchMap = new Map(matches.map(m => [m.id, m]));
   const predictionsList = Array.from(predictions.values());
 
@@ -211,7 +253,6 @@ function App() {
         )}
       </main>
 
-      {/* Prediction Modal */}
       {predictingMatch && (
         <PredictionModal
           match={predictingMatch}
@@ -221,7 +262,6 @@ function App() {
         />
       )}
 
-      {/* Toast */}
       {toast && (
         <div className="toast">
           <span className="toast-icon">✅</span>
