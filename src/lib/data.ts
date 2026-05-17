@@ -125,9 +125,10 @@ export function isKnockoutStage(stage: string): boolean {
 // Generate avatar initials color from name
 export function getAvatarColor(name: string): string {
   const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-    '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-    '#BB8FCE', '#85C1E9', '#F0B27A',
+    '#6101eb', '#751313', '#014c3f', '#d70000',
+    '#b486fe', '#01c752', '#3150ff', '#ff3c04',
+    '#bb6ac7', '#2396f2', '#b1ea02', '#e71f63',
+    '#63ffd9', '#ff9e81', '#ebff44', '#1a247c',
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
