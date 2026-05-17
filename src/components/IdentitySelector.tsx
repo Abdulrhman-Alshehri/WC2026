@@ -201,53 +201,57 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
         <h3 className="pin-title">{title}</h3>
         <p className="pin-subtitle">{subtitle}</p>
 
-        <div className="pin-inputs">
-          {[0, 1, 2, 3].map((i) => (
-            <input
-              key={`pin-${i}`}
-              ref={(el) => { inputRefs.current[i] = el; }}
-              type="password"
-              inputMode="numeric"
-              maxLength={1}
-              value={pin[i]}
-              onChange={(e) => handlePinChange(i, e.target.value, false)}
-              onKeyDown={(e) => handleKeyDown(i, e, false)}
-              className="pin-digit"
-              disabled={loading || (isSetup && isConfirmStep)}
-            />
-          ))}
-        </div>
-
-        {isSetup && isConfirmStep && (
-          <div className="pin-inputs" style={{ marginTop: '16px' }}>
+        <form onSubmit={(e) => { e.preventDefault(); isSetup ? handleSetupPin() : handleVerifyPin(); }}>
+          <div className="pin-inputs">
             {[0, 1, 2, 3].map((i) => (
               <input
-                key={`confirm-${i}`}
-                ref={(el) => { confirmRefs.current[i] = el; }}
+                key={`pin-${i}`}
+                ref={(el) => { inputRefs.current[i] = el; }}
                 type="password"
                 inputMode="numeric"
                 maxLength={1}
-                value={confirmPin[i]}
-                onChange={(e) => handlePinChange(i, e.target.value, true)}
-                onKeyDown={(e) => handleKeyDown(i, e, true)}
+                value={pin[i]}
+                onChange={(e) => handlePinChange(i, e.target.value, false)}
+                onKeyDown={(e) => handleKeyDown(i, e, false)}
                 className="pin-digit"
-                disabled={loading}
+                disabled={loading || (isSetup && isConfirmStep)}
+                autoComplete="off"
               />
             ))}
           </div>
-        )}
 
-        {error && <p className="pin-error">{error}</p>}
+          {isSetup && isConfirmStep && (
+            <div className="pin-inputs" style={{ marginTop: '16px' }}>
+              {[0, 1, 2, 3].map((i) => (
+                <input
+                  key={`confirm-${i}`}
+                  ref={(el) => { confirmRefs.current[i] = el; }}
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={confirmPin[i]}
+                  onChange={(e) => handlePinChange(i, e.target.value, true)}
+                  onKeyDown={(e) => handleKeyDown(i, e, true)}
+                  className="pin-digit"
+                  disabled={loading}
+                  autoComplete="off"
+                />
+              ))}
+            </div>
+          )}
 
-        {isSetup && (
-          <button
-            className="pin-submit-btn"
-            onClick={handleSetupPin}
-            disabled={loading || pin.join('').length !== 4 || (isConfirmStep && confirmPin.join('').length !== 4)}
-          >
-            {loading ? 'Saving...' : isConfirmStep ? 'Confirm & Enter' : 'Next'}
-          </button>
-        )}
+          {error && <p className="pin-error">{error}</p>}
+
+          {isSetup && (
+            <button
+              type="submit"
+              className="pin-submit-btn"
+              disabled={loading || pin.join('').length !== 4 || (isConfirmStep && confirmPin.join('').length !== 4)}
+            >
+              {loading ? 'Saving...' : isConfirmStep ? 'Confirm & Enter' : 'Next'}
+            </button>
+          )}
+        </form>
       </div>
     </div>
   );
