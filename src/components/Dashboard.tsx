@@ -86,13 +86,16 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
     setSyncing(true);
     setSyncBanner(null);
     try {
+      console.log('Invoking sync-scores Edge Function manually...');
       // Invoke the Supabase Edge Function securely
-      const { data, error } = await supabase.functions.invoke('sync-fixtures', {
+      const { data, error } = await supabase.functions.invoke('sync-scores', {
         method: 'POST',
         body: {}
       });
 
       if (error) throw error;
+
+      console.log('sync-scores response data:', data);
 
       if (data && data.success) {
         setSyncBanner({ 
@@ -101,11 +104,10 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
         });
         // Invalidate react-query cache to refetch fresh matches from Supabase public.matches
         queryClient.invalidateQueries({ queryKey: ['matches'] });
-      } else if (data && !data.success) {
-        // Render beautiful warning for plan restrictions
+      } else {
         setSyncBanner({
-          type: 'warning',
-          message: `${data.message} (${data.error?.plan || 'Plan restriction'})`
+          type: 'error',
+          message: data?.message || 'Failed to synchronize matches.'
         });
       }
     } catch (err: any) {
