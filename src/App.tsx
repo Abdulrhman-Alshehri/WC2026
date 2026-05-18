@@ -38,13 +38,15 @@ function App() {
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
     queryFn: async () => {
+      console.log("[App.tsx] Initiating fetch for matches from Supabase...");
       const { data, error } = await supabase
         .from('matches')
-        .select('id, home_team, away_team, kickoff_utc, status, home_score, away_score, group_name, stadium, match_date, stage, api_match_id, home_logo_url, away_logo_url')
+        .select('*')
         .order('kickoff_utc');
       if (error) {
-        console.error("Supabase Error fetching matches:", error.message, error.details);
+        console.error("[App.tsx] Supabase Error fetching matches:", error.message, error.details);
       }
+      console.log(`[App.tsx] Matches query finished. Received ${data?.length || 0} rows. Sample row:`, data?.[0]);
       return (data as Match[]) || [];
     },
   });
@@ -77,7 +79,7 @@ function App() {
         { data: preds }
       ] = await Promise.all([
         supabase.from('wallets').select('balance, in_play').eq('participant_id', currentUser!.id).single(),
-        supabase.from('predictions').select('id, match_id, prediction, stake, status, payout, submitted_at, updated_at').eq('participant_id', currentUser!.id)
+        supabase.from('predictions').select('id, participant_id, match_id, prediction, stake, status, payout, submitted_at, updated_at').eq('participant_id', currentUser!.id)
       ]);
       
       const predMap = new Map<string, Prediction>();
