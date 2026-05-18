@@ -30,9 +30,14 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
       ];
 
   const handleConfirm = () => {
-    if (!selected || stake < minStake || stake > maxStake) return;
+    console.log("[PredictionModal] Confirm Prediction clicked. State:", { selected, stake, minStake, maxStake, availableBalance });
+    if (!selected || stake < minStake || stake > maxStake) {
+      console.warn("[PredictionModal] Confirm aborted due to validation failure.");
+      return;
+    }
     setConfirming(true);
     setTimeout(() => {
+      console.log("[PredictionModal] Confirming timeout finished. Submitting to app level...");
       onSubmit(match.id, selected, stake);
       setConfirming(false);
     }, 600);
@@ -67,7 +72,10 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
             <button
               key={opt.value}
               className={`option-btn ${selected === opt.value ? 'option-selected' : ''}`}
-              onClick={() => setSelected(opt.value)}
+              onClick={() => {
+                console.log("[PredictionModal] Option selected:", opt.value, opt.label);
+                setSelected(opt.value);
+              }}
             >
               {opt.flag && <span className="option-flag">{getFlagEmoji(opt.flag)}</span>}
               <span className="option-label">{opt.label}</span>

@@ -138,7 +138,11 @@ function App() {
   }, []);
 
   const handleSubmitPrediction = useCallback(async (matchId: string, prediction: string, stake: number) => {
-    if (!currentUser) return;
+    console.log("[App.tsx] handleSubmitPrediction invoked:", { matchId, prediction, stake, currentUser });
+    if (!currentUser) {
+      console.warn("[App.tsx] Cannot submit prediction: no currentUser is set.");
+      return;
+    }
     
     setPredictingMatch(null);
     showToast('Processing prediction...');
@@ -156,18 +160,25 @@ function App() {
       updated_at: new Date().toISOString(),
     };
 
+    console.log("[App.tsx] Applying optimistic update with payload:", optimisticPrediction);
     queryClient.setQueryData(['userData', currentUser.id], (old: any) => {
-      if (!old) return old;
+      if (!old) {
+        console.warn("[App.tsx] No existing userData found in queryClient cache to optimistically update.");
+        return old;
+      }
       const nextPreds = new Map(old.predictions);
       nextPreds.set(matchId, optimisticPrediction);
-      return {
+      const nextData = {
         ...old,
         balance: old.balance - stake,
         inPlay: old.inPlay + stake,
         predictions: nextPreds
       };
+      console.log("[App.tsx] Optimistic update state calculated:", nextData);
+      return nextData;
     });
 
+    console.log("[App.tsx] Invoking place_prediction RPC in Supabase...");
     const { data, error } = await supabase.rpc('place_prediction', {
       p_participant_id: currentUser.id,
       p_match_id: matchId,
@@ -176,12 +187,15 @@ function App() {
     });
 
     if (error || !data || !data.success) {
-      console.error("RPC Failed:", error || data?.error);
+      console.error("[App.tsx] Supabase place_prediction RPC Failed! Details:", { error, data });
       // Rollback on error
       queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
-      showToast(error ? 'Error placing prediction: ' + error.message : 'Failed: ' + (data?.error || 'Unknown error'));
+      const errMsg = error ? error.message : (data?.error || 'Unknown error');
+      showToast('Failed to place prediction: ' + errMsg);
       return;
     }
+
+    console.log("[App.tsx] Supabase place_prediction RPC Succeeded! Response:", data);
 
     // Success! Update local state with real ID and actual returned balance
     queryClient.setQueryData(['userData', currentUser.id], (old: any) => {
@@ -197,6 +211,7 @@ function App() {
       };
     });
 
+    console.log("[App.tsx] Invalidating leaderboard queries to update ranks...");
     queryClient.invalidateQueries({ queryKey: ['leaderboard'] }); // update our balance in leaderboard too
 
     const matchObj = matches.find(m => m.id === matchId);
