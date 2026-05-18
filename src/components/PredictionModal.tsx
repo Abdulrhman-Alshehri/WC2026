@@ -57,30 +57,63 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
 
         <div className="modal-matchup">
           <div className="modal-team">
-            <span className="modal-flag">{getFlagEmoji(match.home_team_code)}</span>
+            {match.home_logo_url ? (
+              <img 
+                src={match.home_logo_url} 
+                alt={match.home_team} 
+                className="team-logo-img" 
+                style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} 
+              />
+            ) : (
+              <span className="modal-flag">{getFlagEmoji(match.home_team_code)}</span>
+            )}
             <span>{match.home_team}</span>
           </div>
           <span className="modal-vs">VS</span>
           <div className="modal-team">
-            <span className="modal-flag">{getFlagEmoji(match.away_team_code)}</span>
+            {match.away_logo_url ? (
+              <img 
+                src={match.away_logo_url} 
+                alt={match.away_team} 
+                className="team-logo-img" 
+                style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} 
+              />
+            ) : (
+              <span className="modal-flag">{getFlagEmoji(match.away_team_code)}</span>
+            )}
             <span>{match.away_team}</span>
           </div>
         </div>
 
         <div className="modal-options">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              className={`option-btn ${selected === opt.value ? 'option-selected' : ''}`}
-              onClick={() => {
-                console.log("[PredictionModal] Option selected:", opt.value, opt.label);
-                setSelected(opt.value);
-              }}
-            >
-              {opt.flag && <span className="option-flag">{getFlagEmoji(opt.flag)}</span>}
-              <span className="option-label">{opt.label}</span>
-            </button>
-          ))}
+          {options.map((opt) => {
+            const isHome = opt.value.startsWith('HOME');
+            const isAway = opt.value.startsWith('AWAY');
+            const logoUrl = isHome ? match.home_logo_url : isAway ? match.away_logo_url : null;
+            const teamName = isHome ? match.home_team : isAway ? match.away_team : '';
+            return (
+              <button
+                key={opt.value}
+                className={`option-btn ${selected === opt.value ? 'option-selected' : ''}`}
+                onClick={() => {
+                  console.log("[PredictionModal] Option selected:", opt.value, opt.label);
+                  setSelected(opt.value);
+                }}
+              >
+                {logoUrl ? (
+                  <img 
+                    src={logoUrl} 
+                    alt={teamName} 
+                    className="team-logo-img" 
+                    style={{ width: '24px', height: '24px', objectFit: 'contain', marginBottom: '4px' }} 
+                  />
+                ) : (
+                  opt.flag && <span className="option-flag">{getFlagEmoji(opt.flag)}</span>
+                )}
+                <span className="option-label">{opt.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="modal-stake">

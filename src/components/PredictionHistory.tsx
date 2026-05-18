@@ -65,9 +65,27 @@ export default function PredictionHistory({ predictions, matches }: Props) {
               <div key={pred.id} className={`history-card history-${pred.status.toLowerCase()}`}>
                 <div className="history-card-top">
                   <div className="history-match-info">
-                    <span className="history-flag">{getFlagEmoji(match.home_team_code)}</span>
+                    {match.home_logo_url ? (
+                      <img 
+                        src={match.home_logo_url} 
+                        alt={match.home_team} 
+                        className="team-logo-img" 
+                        style={{ width: '20px', height: '20px', objectFit: 'contain', marginRight: '6px' }} 
+                      />
+                    ) : (
+                      <span className="history-flag">{getFlagEmoji(match.home_team_code)}</span>
+                    )}
                     <span className="history-teams">{match.home_team} vs {match.away_team}</span>
-                    <span className="history-flag">{getFlagEmoji(match.away_team_code)}</span>
+                    {match.away_logo_url ? (
+                      <img 
+                        src={match.away_logo_url} 
+                        alt={match.away_team} 
+                        className="team-logo-img" 
+                        style={{ width: '20px', height: '20px', objectFit: 'contain', marginLeft: '6px' }} 
+                      />
+                    ) : (
+                      <span className="history-flag">{getFlagEmoji(match.away_team_code)}</span>
+                    )}
                   </div>
                   <span className={`history-badge badge-${pred.status.toLowerCase()}`}>
                     {pred.status}
