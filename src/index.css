@@ -263,3 +263,184 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-en);line-heig
 .podium-card{min-width:100px;padding:12px}
 .history-stats{flex-wrap:wrap}
 }
+
+/* CUSTOM PREMIUM CONFIRMATION DIALOG */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(26, 36, 124, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: confirmFadeIn 0.25s ease-out;
+}
+
+.confirm-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 48px rgba(26, 36, 124, 0.16), 0 0 0 1px rgba(26, 36, 124, 0.05);
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 24px 24px;
+  text-align: center;
+  overflow: hidden;
+  animation: confirmScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--orange), var(--pink));
+}
+
+.confirm-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fff5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 0 0 8px rgba(255, 60, 4, 0.05);
+  animation: warningPulse 2s infinite;
+}
+
+.confirm-warning-svg {
+  width: 32px;
+  height: 32px;
+  color: var(--orange);
+}
+
+.confirm-title {
+  font-family: var(--font-en);
+  font-size: 1.25rem;
+  color: var(--text);
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.confirm-message {
+  font-size: 0.85rem;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-btn-primary, .confirm-btn-secondary {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 24px;
+  font-family: var(--font-en);
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  letter-spacing: 0.5px;
+}
+
+.confirm-btn-primary {
+  background: linear-gradient(135deg, var(--orange), var(--pink));
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(255, 60, 4, 0.25);
+}
+
+.confirm-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 60, 4, 0.35);
+}
+
+.confirm-btn-secondary {
+  background: #f5f5f5;
+  color: var(--text);
+  border: 2px solid var(--border);
+}
+
+.confirm-btn-secondary:hover {
+  background: #e5e5e5;
+  border-color: #d5d5d5;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirmScaleUp {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes warningPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 60, 4, 0.15); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 60, 4, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 60, 4, 0); }
+}
+
+/* REFINED PREMIUM MATCH CARD ACTIONS */
+.prediction-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px !important;
+  width: 100%;
+}
+
+.btn-predict-edit, .btn-predict-cancel {
+  flex: 1;
+  padding: 10px 18px !important;
+  border-radius: 20px !important;
+  font-family: var(--font-en);
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+}
+
+.btn-predict-edit {
+  background: rgba(49, 80, 255, 0.06) !important;
+  color: var(--accent) !important;
+  border: 2px solid rgba(49, 80, 255, 0.15) !important;
+  box-shadow: 0 2px 6px rgba(49, 80, 255, 0.02);
+}
+
+.btn-predict-edit:hover {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  border-color: var(--accent) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(49, 80, 255, 0.15);
+}
+
+.btn-predict-cancel {
+  background: rgba(255, 60, 4, 0.05) !important;
+  color: var(--orange) !important;
+  border: 2px solid rgba(255, 60, 4, 0.15) !important;
+  box-shadow: 0 2px 6px rgba(255, 60, 4, 0.02);
+}
+
+.btn-predict-cancel:hover {
+  background: var(--orange) !important;
+  color: #ffffff !important;
+  border-color: var(--orange) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(255, 60, 4, 0.15);
+}

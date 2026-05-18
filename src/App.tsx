@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
 import PredictionHistory from './components/PredictionHistory';
 import PredictionModal from './components/PredictionModal';
+import ConfirmModal from './components/ConfirmModal';
 
 function App() {
   const queryClient = useQueryClient();
@@ -23,6 +24,17 @@ function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // --- REACT QUERY: PUBLIC DATA ---
   
@@ -261,29 +273,34 @@ function App() {
   const handleCancelPrediction = useCallback(async (predictionId: string) => {
     if (!currentUser) return;
     
-    const confirmCancel = window.confirm("Are you sure you want to cancel this prediction? Your full stake will be instantly refunded to your balance.");
-    if (!confirmCancel) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Cancel Prediction',
+      message: 'Are you sure you want to cancel this prediction? Your full stake will be refunded to your balance instantly.',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        showToast('Cancelling prediction...');
 
-    showToast('Cancelling prediction...');
+        console.log("[App.tsx] Invoking cancel_prediction RPC in Supabase...");
+        const { data, error } = await supabase.rpc('cancel_prediction', {
+          p_prediction_id: predictionId
+        });
 
-    console.log("[App.tsx] Invoking cancel_prediction RPC in Supabase...");
-    const { data, error } = await supabase.rpc('cancel_prediction', {
-      p_prediction_id: predictionId
+        if (error || !data || !data.success) {
+          console.error("[App.tsx] Supabase cancel_prediction RPC Failed! Details:", { error, data });
+          showToast('Failed to cancel prediction: ' + (error ? error.message : (data?.error || 'Unknown error')));
+          return;
+        }
+
+        console.log("[App.tsx] Supabase cancel_prediction RPC Succeeded! Response:", data);
+
+        // Refresh user data from Supabase
+        queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
+        queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+        
+        showToast('Prediction cancelled successfully! Stake fully refunded.');
+      }
     });
-
-    if (error || !data || !data.success) {
-      console.error("[App.tsx] Supabase cancel_prediction RPC Failed! Details:", { error, data });
-      showToast('Failed to cancel prediction: ' + (error ? error.message : (data?.error || 'Unknown error')));
-      return;
-    }
-
-    console.log("[App.tsx] Supabase cancel_prediction RPC Succeeded! Response:", data);
-
-    // Refresh user data from Supabase
-    queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
-    queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-    
-    showToast('Prediction cancelled successfully! Stake fully refunded.');
   }, [currentUser, queryClient]);
 
   const showToast = (message: string) => {
@@ -354,6 +371,14 @@ function App() {
           {toast}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
