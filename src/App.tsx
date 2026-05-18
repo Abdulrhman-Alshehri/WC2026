@@ -38,7 +38,10 @@ function App() {
   const { data: matches = [] } = useQuery({
     queryKey: ['matches'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('matches').select('id, home_team, away_team, kickoff_utc, status, home_score, away_score, group_name, stadium, match_date').order('kickoff_utc');
+      const { data, error } = await supabase
+        .from('matches')
+        .select('id, home_team, away_team, kickoff_utc, status, home_score, away_score, group_name, stadium, match_date, stage, api_match_id, home_logo_url, away_logo_url')
+        .order('kickoff_utc');
       if (error) {
         console.error("Supabase Error fetching matches:", error.message, error.details);
       }

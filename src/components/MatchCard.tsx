@@ -39,7 +39,16 @@ export default function MatchCard({ match, prediction, onPredict }: Props) {
       {/* Teams and Score */}
       <div className="match-card-body">
         <div className="match-team home">
-          <span className="team-flag">{getFlagEmoji(match.home_team_code)}</span>
+          {match.home_logo_url ? (
+            <img 
+              src={match.home_logo_url} 
+              alt={match.home_team} 
+              className="team-logo-img" 
+              style={{ width: '28px', height: '28px', objectFit: 'contain', marginRight: '8px' }} 
+            />
+          ) : (
+            <span className="team-flag">{getFlagEmoji(match.home_team_code)}</span>
+          )}
           <span className="team-name">{match.home_team}</span>
         </div>
 
@@ -60,7 +69,16 @@ export default function MatchCard({ match, prediction, onPredict }: Props) {
 
         <div className="match-team away">
           <span className="team-name">{match.away_team}</span>
-          <span className="team-flag">{getFlagEmoji(match.away_team_code)}</span>
+          {match.away_logo_url ? (
+            <img 
+              src={match.away_logo_url} 
+              alt={match.away_team} 
+              className="team-logo-img" 
+              style={{ width: '28px', height: '28px', objectFit: 'contain', marginLeft: '8px' }} 
+            />
+          ) : (
+            <span className="team-flag">{getFlagEmoji(match.away_team_code)}</span>
+          )}
         </div>
       </div>
 
