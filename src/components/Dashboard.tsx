@@ -10,13 +10,14 @@ interface Props {
   matches: Match[];
   predictions: Map<string, Prediction>;
   onPredict: (match: Match) => void;
+  onCancelPrediction: (predictionId: string) => void;
 }
 
 type MainTab = 'dashboard' | 'groups' | 'knockouts';
 type GroupLetter = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
 type KnockoutRound = 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'FINAL';
 
-export default function Dashboard({ matches, predictions, onPredict }: Props) {
+export default function Dashboard({ matches, predictions, onPredict, onCancelPrediction }: Props) {
   const queryClient = useQueryClient();
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('dashboard');
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A');
@@ -344,6 +345,7 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
                     match={m}
                     prediction={predictions.get(m.id)}
                     onPredict={onPredict}
+                    onCancelPrediction={onCancelPrediction}
                   />
                 ))}
               </div>
@@ -361,6 +363,7 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
                     match={m}
                     prediction={predictions.get(m.id)}
                     onPredict={onPredict}
+                    onCancelPrediction={onCancelPrediction}
                   />
                 ))}
               </div>
@@ -378,6 +381,7 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
                     match={m}
                     prediction={predictions.get(m.id)}
                     onPredict={onPredict}
+                    onCancelPrediction={onCancelPrediction}
                   />
                 ))}
               </div>
@@ -436,6 +440,7 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
                     match={m}
                     prediction={predictions.get(m.id)}
                     onPredict={onPredict}
+                    onCancelPrediction={onCancelPrediction}
                   />
                 ))}
               </div>
@@ -496,6 +501,7 @@ export default function Dashboard({ matches, predictions, onPredict }: Props) {
                     match={m}
                     prediction={predictions.get(m.id)}
                     onPredict={onPredict}
+                    onCancelPrediction={onCancelPrediction}
                   />
                 ))}
               </div>

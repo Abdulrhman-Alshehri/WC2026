@@ -223,6 +223,69 @@ function App() {
     showToast(`Prediction locked! Staked ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
   }, [currentUser, matches, queryClient]);
 
+  const handleEditPrediction = useCallback(async (matchId: string, predictionId: string, prediction: string, stake: number) => {
+    console.log("[App.tsx] handleEditPrediction invoked:", { matchId, predictionId, prediction, stake, currentUser });
+    if (!currentUser) return;
+    
+    setPredictingMatch(null);
+    showToast('Updating prediction...');
+
+    console.log("[App.tsx] Invoking update_prediction RPC in Supabase...");
+    const { data, error } = await supabase.rpc('update_prediction', {
+      p_prediction_id: predictionId,
+      p_new_prediction: prediction,
+      p_new_stake: stake
+    });
+
+    if (error || !data || !data.success) {
+      console.error("[App.tsx] Supabase update_prediction RPC Failed! Details:", { error, data });
+      showToast('Failed to update prediction: ' + (error ? error.message : (data?.error || 'Unknown error')));
+      return;
+    }
+
+    console.log("[App.tsx] Supabase update_prediction RPC Succeeded! Response:", data);
+    
+    // Refresh user data from Supabase
+    queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
+    queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+
+    const matchObj = matches.find(m => m.id === matchId);
+    const teamName = prediction.includes('HOME')
+      ? matchObj?.home_team
+      : prediction === 'DRAW' ? 'Draw'
+      : matchObj?.away_team;
+      
+    showToast(`Prediction updated! New stake is ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
+  }, [currentUser, matches, queryClient]);
+
+  const handleCancelPrediction = useCallback(async (predictionId: string) => {
+    if (!currentUser) return;
+    
+    const confirmCancel = window.confirm("Are you sure you want to cancel this prediction? Your full stake will be instantly refunded to your balance.");
+    if (!confirmCancel) return;
+
+    showToast('Cancelling prediction...');
+
+    console.log("[App.tsx] Invoking cancel_prediction RPC in Supabase...");
+    const { data, error } = await supabase.rpc('cancel_prediction', {
+      p_prediction_id: predictionId
+    });
+
+    if (error || !data || !data.success) {
+      console.error("[App.tsx] Supabase cancel_prediction RPC Failed! Details:", { error, data });
+      showToast('Failed to cancel prediction: ' + (error ? error.message : (data?.error || 'Unknown error')));
+      return;
+    }
+
+    console.log("[App.tsx] Supabase cancel_prediction RPC Succeeded! Response:", data);
+
+    // Refresh user data from Supabase
+    queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
+    queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+    
+    showToast('Prediction cancelled successfully! Stake fully refunded.');
+  }, [currentUser, queryClient]);
+
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3500);
@@ -257,6 +320,7 @@ function App() {
             matches={matches}
             predictions={predictions}
             onPredict={handleOpenPredict}
+            onCancelPrediction={handleCancelPrediction}
           />
         )}
         {currentPage === 'leaderboard' && (
@@ -277,7 +341,9 @@ function App() {
         <PredictionModal
           match={predictingMatch}
           availableBalance={balance}
+          existingPrediction={predictions.get(predictingMatch.id)}
           onSubmit={handleSubmitPrediction}
+          onEdit={handleEditPrediction}
           onClose={() => setPredictingMatch(null)}
         />
       )}

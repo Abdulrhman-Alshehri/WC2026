@@ -1,22 +1,24 @@
 import { useState } from 'react';
-import { Match } from '../types';
+import { Match, Prediction } from '../types';
 import { getFlagEmoji, formatCoins, isKnockoutStage } from '../lib/data';
 
 interface Props {
   match: Match;
   availableBalance: number;
+  existingPrediction?: Prediction;
   onSubmit: (matchId: string, prediction: string, stake: number) => void;
+  onEdit: (matchId: string, predictionId: string, prediction: string, stake: number) => void;
   onClose: () => void;
 }
 
-export default function PredictionModal({ match, availableBalance, onSubmit, onClose }: Props) {
+export default function PredictionModal({ match, availableBalance, existingPrediction, onSubmit, onEdit, onClose }: Props) {
   const knockout = isKnockoutStage(match.stage);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [stake, setStake] = useState<number>(Math.min(100000, availableBalance));
+  const [selected, setSelected] = useState<string | null>(existingPrediction?.prediction || null);
+  const [stake, setStake] = useState<number>(existingPrediction?.stake || Math.min(100000, availableBalance));
   const [confirming, setConfirming] = useState(false);
 
   const minStake = 1000;
-  const maxStake = availableBalance;
+  const maxStake = availableBalance + (existingPrediction?.stake || 0);
 
   const options = knockout
     ? [
@@ -30,7 +32,7 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
       ];
 
   const handleConfirm = () => {
-    console.log("[PredictionModal] Confirm Prediction clicked. State:", { selected, stake, minStake, maxStake, availableBalance });
+    console.log("[PredictionModal] Confirm Prediction clicked. State:", { selected, stake, minStake, maxStake, availableBalance, existingPrediction });
     if (!selected || stake < minStake || stake > maxStake) {
       console.warn("[PredictionModal] Confirm aborted due to validation failure.");
       return;
@@ -38,7 +40,11 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
     setConfirming(true);
     setTimeout(() => {
       console.log("[PredictionModal] Confirming timeout finished. Submitting to app level...");
-      onSubmit(match.id, selected, stake);
+      if (existingPrediction) {
+        onEdit(match.id, existingPrediction.id, selected, stake);
+      } else {
+        onSubmit(match.id, selected, stake);
+      }
       setConfirming(false);
     }, 600);
   };
@@ -52,7 +58,7 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
           <span className="modal-stage">
             {match.group_name ? `Group ${match.group_name}` : match.stage}
           </span>
-          <h2 className="modal-title">Make Your Prediction</h2>
+          <h2 className="modal-title">{existingPrediction ? 'Edit Prediction' : 'Make Your Prediction'}</h2>
         </div>
 
         <div className="modal-matchup">
@@ -119,7 +125,7 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
         <div className="modal-stake">
           <label className="stake-label">
             Stake Amount
-            <span className="stake-available">Available: {formatCoins(availableBalance)}</span>
+            <span className="stake-available">Available: {formatCoins(maxStake)}{existingPrediction && ' (with old stake)'}</span>
           </label>
           <input
             type="range"
@@ -150,7 +156,7 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
               <button
                 key={pct}
                 className="stake-preset"
-                onClick={() => setStake(Math.max(minStake, Math.floor(availableBalance * pct / 100 / 1000) * 1000))}
+                onClick={() => setStake(Math.max(minStake, Math.floor(maxStake * pct / 100 / 1000) * 1000))}
               >
                 {pct}%
               </button>
@@ -173,7 +179,7 @@ export default function PredictionModal({ match, availableBalance, onSubmit, onC
           disabled={!selected || stake < minStake || stake > maxStake || confirming}
           onClick={handleConfirm}
         >
-          {confirming ? 'Locking Prediction...' : 'Confirm Prediction'}
+          {confirming ? 'Locking Prediction...' : existingPrediction ? 'Update Prediction' : 'Confirm Prediction'}
         </button>
       </div>
     </div>

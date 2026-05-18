@@ -5,9 +5,10 @@ interface Props {
   match: Match;
   prediction?: Prediction;
   onPredict: (match: Match) => void;
+  onCancelPrediction?: (predictionId: string) => void;
 }
 
-export default function MatchCard({ match, prediction, onPredict }: Props) {
+export default function MatchCard({ match, prediction, onPredict, onCancelPrediction }: Props) {
   const isLive = match.status === 'LIVE' || match.status === 'HT';
   const isFinished = match.status === 'FT' || match.status === 'AET' || match.status === 'PEN';
   const windowOpen = isPredictionWindowOpen(match);
@@ -85,24 +86,65 @@ export default function MatchCard({ match, prediction, onPredict }: Props) {
       {/* Prediction / Action area */}
       <div className="match-card-footer">
         {prediction ? (
-          <div className={`prediction-badge prediction-${prediction.status.toLowerCase()}`}>
-            <span className="prediction-choice">
-              {prediction.prediction === 'HOME_WIN' || prediction.prediction === 'HOME_ADVANCE'
-                ? match.home_team
-                : prediction.prediction === 'AWAY_WIN' || prediction.prediction === 'AWAY_ADVANCE'
-                ? match.away_team
-                : 'Draw'}
-            </span>
-            <span className="prediction-stake">
-              {new Intl.NumberFormat('en-US').format(prediction.stake)} coins
-            </span>
-            {predictionLabel && predictionLabel !== 'PENDING' && (
-              <span className={`prediction-result result-${predictionLabel.toLowerCase()}`}>
-                {predictionLabel}
-                {prediction.payout != null && predictionLabel === 'WON' && (
-                  <> +{new Intl.NumberFormat('en-US').format(prediction.payout - prediction.stake)}</>
-                )}
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <div className={`prediction-badge prediction-${prediction.status.toLowerCase()}`}>
+              <span className="prediction-choice">
+                {prediction.prediction === 'HOME_WIN' || prediction.prediction === 'HOME_ADVANCE'
+                  ? match.home_team
+                  : prediction.prediction === 'AWAY_WIN' || prediction.prediction === 'AWAY_ADVANCE'
+                  ? match.away_team
+                  : 'Draw'}
               </span>
+              <span className="prediction-stake">
+                {new Intl.NumberFormat('en-US').format(prediction.stake)} coins
+              </span>
+              {predictionLabel && predictionLabel !== 'PENDING' && (
+                <span className={`prediction-result result-${predictionLabel.toLowerCase()}`}>
+                  {predictionLabel}
+                  {prediction.payout != null && predictionLabel === 'WON' && (
+                    <> +{new Intl.NumberFormat('en-US').format(prediction.payout - prediction.stake)}</>
+                  )}
+                </span>
+              )}
+            </div>
+            {windowOpen && prediction.status === 'PENDING' && (
+              <div className="prediction-actions" style={{ display: 'flex', gap: '8px', marginTop: '8px', width: '100%' }}>
+                <button
+                  className="btn-predict-edit"
+                  onClick={() => onPredict(match)}
+                  style={{
+                    flex: 1,
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: '#f0f2fe',
+                    color: '#3150ff',
+                    border: '1px solid #c7d2fe',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="btn-predict-cancel"
+                  onClick={() => onCancelPrediction?.(prediction.id)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: '#fef2f2',
+                    color: '#ef4444',
+                    border: '1px solid #fecaca',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             )}
           </div>
         ) : windowOpen ? (
