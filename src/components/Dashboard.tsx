@@ -218,7 +218,7 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '2px solid var(--border)',
+          borderBottom: '1px solid rgba(255,255,255,0.7)',
           paddingBottom: '8px',
           flexWrap: 'wrap',
           gap: '12px'
@@ -235,13 +235,15 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             style={{
               padding: '10px 16px',
               borderRadius: 'var(--radius-sm)',
-              border: 'none',
+              border: activeMainTab === 'dashboard' ? '1px solid rgba(255,255,255,0.85)' : 'none',
               cursor: 'pointer',
               fontWeight: 'bold',
               fontSize: '0.85rem',
               transition: 'all 0.2s',
-              background: activeMainTab === 'dashboard' ? 'var(--accent)' : 'none',
-              color: activeMainTab === 'dashboard' ? '#ffffff' : 'var(--text3)'
+              background: activeMainTab === 'dashboard' ? 'rgba(255,255,255,0.7)' : 'none',
+              color: activeMainTab === 'dashboard' ? 'var(--accent)' : 'var(--text3)',
+              borderBottom: activeMainTab === 'dashboard' ? '2px solid var(--accent)' : 'none',
+              backdropFilter: activeMainTab === 'dashboard' ? 'blur(12px)' : 'none'
             }}
           >
             📊 Live & Highlights
@@ -252,13 +254,15 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             style={{
               padding: '10px 16px',
               borderRadius: 'var(--radius-sm)',
-              border: 'none',
+              border: activeMainTab === 'groups' ? '1px solid rgba(255,255,255,0.85)' : 'none',
               cursor: 'pointer',
               fontWeight: 'bold',
               fontSize: '0.85rem',
               transition: 'all 0.2s',
-              background: activeMainTab === 'groups' ? 'var(--accent)' : 'none',
-              color: activeMainTab === 'groups' ? '#ffffff' : 'var(--text3)'
+              background: activeMainTab === 'groups' ? 'rgba(255,255,255,0.7)' : 'none',
+              color: activeMainTab === 'groups' ? 'var(--accent)' : 'var(--text3)',
+              borderBottom: activeMainTab === 'groups' ? '2px solid var(--accent)' : 'none',
+              backdropFilter: activeMainTab === 'groups' ? 'blur(12px)' : 'none'
             }}
           >
             🏆 Group Stage
@@ -269,13 +273,15 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             style={{
               padding: '10px 16px',
               borderRadius: 'var(--radius-sm)',
-              border: 'none',
+              border: activeMainTab === 'knockouts' ? '1px solid rgba(255,255,255,0.85)' : 'none',
               cursor: 'pointer',
               fontWeight: 'bold',
               fontSize: '0.85rem',
               transition: 'all 0.2s',
-              background: activeMainTab === 'knockouts' ? 'var(--accent)' : 'none',
-              color: activeMainTab === 'knockouts' ? '#ffffff' : 'var(--text3)'
+              background: activeMainTab === 'knockouts' ? 'rgba(255,255,255,0.7)' : 'none',
+              color: activeMainTab === 'knockouts' ? 'var(--accent)' : 'var(--text3)',
+              borderBottom: activeMainTab === 'knockouts' ? '2px solid var(--accent)' : 'none',
+              backdropFilter: activeMainTab === 'knockouts' ? 'blur(12px)' : 'none'
             }}
           >
             ⚡ Knockout Rounds
@@ -291,8 +297,10 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'var(--surface)',
-            border: '2px solid var(--border)',
+            background: 'rgba(255,255,255,0.55)',
+            backdropFilter: 'blur(24px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+            border: '1px solid rgba(255,255,255,0.85)',
             padding: '8px 16px',
             borderRadius: '20px',
             fontSize: '0.8rem',
@@ -300,7 +308,8 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             color: 'var(--text)',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            opacity: syncing ? 0.7 : 1
+            opacity: syncing ? 0.7 : 1,
+            boxShadow: '0 8px 32px rgba(100,120,180,0.12), inset 0 1px 0 rgba(255,255,255,0.9)'
           }}
         >
           <span 
@@ -413,8 +422,10 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  border: `2px solid ${activeGroup === g ? 'var(--accent)' : 'var(--border)'}`,
-                  background: activeGroup === g ? 'var(--accent)' : '#ffffff',
+                  border: activeGroup === g ? '1px solid rgba(91,110,245,0.5)' : '1px solid rgba(255,255,255,0.85)',
+                  background: activeGroup === g ? 'var(--accent)' : 'rgba(255,255,255,0.55)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
                   color: activeGroup === g ? '#ffffff' : 'var(--text)',
                   fontWeight: 'bold',
                   cursor: 'pointer',
@@ -422,7 +433,8 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  boxShadow: activeGroup === g ? '0 4px 20px rgba(91,110,245,0.3)' : '0 8px 32px rgba(100,120,180,0.12)'
                 }}
               >
                 {g}
@@ -475,13 +487,16 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
                   flex: '0 0 auto',
                   padding: '8px 16px',
                   borderRadius: '20px',
-                  border: `2px solid ${activeKnockout === r.key ? 'var(--accent)' : 'var(--border)'}`,
-                  background: activeKnockout === r.key ? 'var(--accent)' : '#ffffff',
+                  border: activeKnockout === r.key ? '1px solid rgba(91,110,245,0.5)' : '1px solid rgba(255,255,255,0.85)',
+                  background: activeKnockout === r.key ? 'var(--accent)' : 'rgba(255,255,255,0.55)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
                   color: activeKnockout === r.key ? '#ffffff' : 'var(--text)',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   fontSize: '0.8rem',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  boxShadow: activeKnockout === r.key ? '0 4px 20px rgba(91,110,245,0.3)' : '0 8px 32px rgba(100,120,180,0.12)'
                 }}
               >
                 {r.label}
