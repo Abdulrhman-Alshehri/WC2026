@@ -25,7 +25,8 @@ export default function Leaderboard({ entries, currentParticipantId }: Props) {
             <div key={entry.participant_id} className={`podium-card ${podiumClass} ${entry.participant_id === currentParticipantId ? 'podium-you' : ''}`}>
               <span className="podium-medal"><Trophy size={22} color={medalColor} /></span>
               <div className="podium-avatar" style={{ background: `linear-gradient(135deg, ${avatarColor}, ${avatarColor}88)` }}>
-                {entry.photo_url ? <img src={entry.photo_url} alt={entry.name} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : <span>{entry.name.charAt(0)}</span>}
+                <span className="podium-avatar-letter">{entry.name.charAt(0)}</span>
+                {entry.photo_url && <img src={entry.photo_url} alt={entry.name} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
               </div>
               <span className="podium-name">{entry.display_name || entry.name}</span>
               <span className="podium-balance"><Coins size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{formatCoins(entry.balance)}</span>

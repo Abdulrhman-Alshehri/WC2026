@@ -1,9 +1,20 @@
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowLeft,
+  AtSign,
+  Camera,
+  Check,
+  Lock,
+  LogOut,
+  Send,
+  Trash2,
+  User,
+  AlertTriangle,
+} from 'lucide-react';
 import { Participant } from '../types';
 import { getAvatarColor } from '../lib/data';
 import { supabase } from '../lib/supabase';
-import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, LogOut, User, AtSign, Lock, Check, Send, Trash2 } from 'lucide-react';
 
 interface Props {
   participant: Participant;
@@ -12,26 +23,151 @@ interface Props {
   onLogout: () => void;
 }
 
+interface ProfileUiError {
+  title: string;
+  message: string;
+  actionHint: string;
+  technicalCode?: string;
+}
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+
+function buildTechnicalCode(error: any, fallback: string): string {
+  const code = error?.statusCode || error?.status || error?.code || error?.error || fallback;
+  return String(code);
+}
+
+function classifyFileValidationError(file: File): ProfileUiError | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return {
+      title: 'Unsupported image format',
+      message: `Selected file type "${file.type || 'unknown'}" is not supported.`,
+      actionHint: 'Use JPG, PNG, or WebP only, then try again.',
+      technicalCode: 'FILE_TYPE_NOT_ALLOWED',
+    };
+  }
+
+  if (file.size > MAX_IMAGE_BYTES) {
+    return {
+      title: 'Image is too large',
+      message: `Selected file is ${Math.ceil(file.size / (1024 * 1024))} MB.`,
+      actionHint: 'Choose an image smaller than 3 MB and try again.',
+      technicalCode: 'FILE_TOO_LARGE',
+    };
+  }
+
+  return null;
+}
+
+function classifyStorageUploadError(uploadError: any): ProfileUiError {
+  const rawMessage = String(uploadError?.message || '').toLowerCase();
+  const technicalCode = buildTechnicalCode(uploadError, 'UPLOAD_FAILED');
+
+  if (
+    rawMessage.includes('row level security') ||
+    rawMessage.includes('permission') ||
+    rawMessage.includes('not authorized') ||
+    rawMessage.includes('forbidden') ||
+    uploadError?.statusCode === 401 ||
+    uploadError?.statusCode === 403
+  ) {
+    return {
+      title: 'Upload permission blocked',
+      message: 'Your account cannot upload images right now.',
+      actionHint: 'Contact an administrator to check storage permissions (RLS/policies).',
+      technicalCode,
+    };
+  }
+
+  if (
+    rawMessage.includes('bucket') &&
+    (rawMessage.includes('not found') || rawMessage.includes('does not exist'))
+  ) {
+    return {
+      title: 'Image service not configured',
+      message: 'The avatar storage bucket is missing or misconfigured.',
+      actionHint: 'Ask support/admin to configure the Supabase "avatars" storage bucket.',
+      technicalCode,
+    };
+  }
+
+  if (
+    rawMessage.includes('network') ||
+    rawMessage.includes('fetch') ||
+    rawMessage.includes('timeout') ||
+    rawMessage.includes('failed to fetch')
+  ) {
+    return {
+      title: 'Connection issue during upload',
+      message: 'We could not reach the image service while uploading your photo.',
+      actionHint: 'Check your internet connection and retry.',
+      technicalCode,
+    };
+  }
+
+  if (
+    rawMessage.includes('payload too large') ||
+    uploadError?.statusCode === 413
+  ) {
+    return {
+      title: 'Image is too large',
+      message: 'The upload service rejected this file size.',
+      actionHint: 'Use an image smaller than 3 MB and retry.',
+      technicalCode,
+    };
+  }
+
+  return {
+    title: 'Image upload failed',
+    message: 'We could not upload your photo due to an unexpected storage error.',
+    actionHint: 'Try again. If the problem persists, contact support with the reference code.',
+    technicalCode,
+  };
+}
+
+function classifyProfileSaveError(saveError: any, hadImageUpload: boolean): ProfileUiError {
+  const technicalCode = buildTechnicalCode(saveError, 'PROFILE_SAVE_FAILED');
+  const rawMessage = String(saveError?.message || '').toLowerCase();
+
+  if (rawMessage.includes('network') || rawMessage.includes('fetch') || rawMessage.includes('timeout')) {
+    return {
+      title: 'Connection issue while saving',
+      message: hadImageUpload
+        ? 'Your image may be uploaded, but profile details could not be saved due to a network issue.'
+        : 'We could not save your profile due to a network issue.',
+      actionHint: 'Check your connection and retry saving.',
+      technicalCode,
+    };
+  }
+
+  return {
+    title: hadImageUpload ? 'Image uploaded, profile not saved' : 'Profile save failed',
+    message: hadImageUpload
+      ? 'Your photo upload finished, but profile details update did not complete.'
+      : 'We could not update your profile details.',
+    actionHint: 'Retry saving. If this keeps happening, contact support with the reference code.',
+    technicalCode,
+  };
+}
+
 export default function ProfileSettings({ participant, onProfileUpdated, onBack, onLogout }: Props) {
   const queryClient = useQueryClient();
 
-  // ── Profile fields ──────────────────────────────────────────
   const [displayName, setDisplayName] = useState(participant.display_name || participant.name);
   const [telegram, setTelegram] = useState((participant.telegram_user || '').replace(/^@/, ''));
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profileError, setProfileError] = useState('');
+  const [profileError, setProfileError] = useState<ProfileUiError | null>(null);
   const [profileSuccess, setProfileSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // -- Telegram Staking Notification state variables
   const [sendingTest, setSendingTest] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
   const [testSuccess, setTestSuccess] = useState(false);
   const [testError, setTestError] = useState('');
 
-  // ── PIN fields ───────────────────────────────────────────────
   const [currentPin, setCurrentPin] = useState(['', '', '', '']);
   const [newPin, setNewPin] = useState(['', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
@@ -46,54 +182,86 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
   const avatarColor = getAvatarColor(participant.name);
   const photoUrl = avatarPreview || participant.photo_url;
 
-  // ── Avatar file handling ─────────────────────────────────────
+  const clearProfileFeedback = () => {
+    setProfileError(null);
+    setProfileSuccess(false);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setProfileError('Please select a JPG, PNG, or WebP image.');
+
+    const validationError = classifyFileValidationError(file);
+    if (validationError) {
+      setAvatarFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setProfileError(validationError);
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      setProfileError('Image must be smaller than 3 MB.');
-      return;
-    }
+
+    clearProfileFeedback();
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
-    setProfileError('');
   };
 
-  // ── Save profile (identity + contact) ───────────────────────
   const handleSaveProfile = async () => {
     const trimmedName = displayName.trim();
     if (!trimmedName || trimmedName.length < 2 || trimmedName.length > 32) {
-      setProfileError('Display name must be 2–32 characters.');
+      setProfileError({
+        title: 'Invalid display name',
+        message: 'Display name must be between 2 and 32 characters.',
+        actionHint: 'Update the name and try again.',
+        technicalCode: 'DISPLAY_NAME_INVALID',
+      });
       return;
     }
+
     const telegramClean = telegram.replace(/^@/, '').trim();
     if (telegramClean && !/^[a-zA-Z0-9_]{3,32}$/.test(telegramClean)) {
-      setProfileError('Telegram username must be 3–32 characters (letters, numbers, underscores).');
+      setProfileError({
+        title: 'Invalid Telegram username',
+        message: 'Telegram username must be 3-32 characters using letters, numbers, or underscores.',
+        actionHint: 'Remove spaces/special symbols and try again.',
+        technicalCode: 'TELEGRAM_INVALID',
+      });
       return;
     }
 
     setProfileSaving(true);
-    setProfileError('');
+    clearProfileFeedback();
 
     let newPhotoUrl = participant.photo_url;
+    let uploadedImage = false;
 
     if (avatarFile) {
       const ext = avatarFile.name.split('.').pop() || 'jpg';
       const path = `avatars/${participant.id}/${Date.now()}.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, avatarFile, { upsert: true });
 
       if (uploadError) {
-        setProfileError('Failed to upload image. Please try again.');
+        console.error('[ProfileSettings] Storage upload failed:', uploadError);
+        setProfileError(classifyStorageUploadError(uploadError));
         setProfileSaving(false);
         return;
       }
-      newPhotoUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+
+      uploadedImage = true;
+      const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path);
+      if (!publicData?.publicUrl) {
+        setProfileError({
+          title: 'Image link generation failed',
+          message: 'Your image upload completed, but we could not generate a profile image URL.',
+          actionHint: 'Retry saving. If it fails again, contact support.',
+          technicalCode: 'PUBLIC_URL_MISSING',
+        });
+        setProfileSaving(false);
+        return;
+      }
+
+      newPhotoUrl = publicData.publicUrl;
     }
 
     const { data, error } = await supabase
@@ -108,7 +276,8 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
       .single();
 
     if (error || !data) {
-      setProfileError('Failed to save profile. Please try again.');
+      console.error('[ProfileSettings] Participant update failed:', error);
+      setProfileError(classifyProfileSaveError(error, uploadedImage));
       setProfileSaving(false);
       return;
     }
@@ -118,39 +287,37 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
     queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
     onProfileUpdated(data as Participant);
     setAvatarFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setAvatarPreview(null);
     setProfileSuccess(true);
     setTimeout(() => setProfileSuccess(false), 3000);
     setProfileSaving(false);
   };
 
-  // -- Telegram Staking Handlers
   const handleSendTestMessage = async () => {
     if (!participant.telegram_chat_id) return;
     setSendingTest(true);
     setTestError('');
     setTestSuccess(false);
     try {
-      // Fetch dynamic actual balance to show in test message
       const { data: wallet } = await supabase
         .from('wallets')
         .select('balance')
         .eq('participant_id', participant.id)
         .single();
-        
+
       const balance = wallet ? wallet.balance : 1000000;
       const formattedBalance = new Intl.NumberFormat('en-US').format(Number(balance));
 
-      const res = await fetch("https://api.telegram.org/bot8781107836:AAHncz26sC_UGey4U5_XNXFv6Peq-cox6rk/sendMessage", {
+      const res = await fetch('https://api.telegram.org/bot8781107836:AAHncz26sC_UGey4U5_XNXFv6Peq-cox6rk/sendMessage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: Number(participant.telegram_chat_id),
-          text: "🔔 *FWC 2026 Prediction Pool Notification Test*\n\nYour Telegram pairing is active and working perfectly! 🎉\n\n💰 *Current Balance:* \x60" + formattedBalance + " Coins\x60\n\nYou will receive alerts here for goal scores and predictions resolution! ⚽🤖",
-          parse_mode: 'Markdown',
+          text: `FWC 2026 Prediction Pool Notification Test\n\nYour Telegram pairing is active and working.\n\nCurrent Balance: ${formattedBalance} Coins`,
         }),
       });
-      
+
       if (res.ok) {
         setTestSuccess(true);
         setTimeout(() => setTestSuccess(false), 5000);
@@ -178,7 +345,6 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
 
       if (error) throw error;
 
-      // Update local storage and app state
       const updated = { ...participant, telegram_chat_id: null, telegram_user: null };
       localStorage.setItem('wc2026_user', JSON.stringify(updated));
       queryClient.invalidateQueries({ queryKey: ['participants'] });
@@ -190,7 +356,6 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
     }
   };
 
-  // ── PIN digit helpers ────────────────────────────────────────
   const handlePinDigit = (
     index: number,
     value: string,
@@ -218,7 +383,6 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
     }
   };
 
-  // ── Change PIN ───────────────────────────────────────────────
   const handleChangePIN = async () => {
     const current = currentPin.join('');
     const next = newPin.join('');
@@ -254,7 +418,6 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
     setPinSaving(false);
   };
 
-  // ── Render a PIN row ─────────────────────────────────────────
   const renderPinRow = (
     label: string,
     pinState: string[],
@@ -285,7 +448,6 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
 
   return (
     <div className="profile-page">
-      {/* Header */}
       <div className="profile-header">
         <button className="profile-back-btn" onClick={onBack}>
           <ArrowLeft size={16} /> Back
@@ -293,11 +455,9 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
         <h2 className="profile-title">Profile Settings</h2>
       </div>
 
-      {/* ── Identity & Contact ── */}
       <section className="profile-section">
         <h3 className="profile-section-title"><User size={13} /> Identity &amp; Contact</h3>
 
-        {/* Avatar upload */}
         <div className="profile-avatar-upload">
           <div className="profile-avatar-preview" style={{ background: photoUrl ? undefined : avatarColor }}>
             {photoUrl
@@ -319,20 +479,21 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
           />
         </div>
 
-        {/* Display name */}
         <div className="profile-field">
           <label className="profile-label">Display Name</label>
           <input
             type="text"
             className="profile-input"
             value={displayName}
-            onChange={(e) => { setDisplayName(e.target.value); setProfileError(''); }}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              clearProfileFeedback();
+            }}
             maxLength={32}
             placeholder="Your name"
           />
         </div>
 
-        {/* Telegram */}
         <div className="profile-field">
           <label className="profile-label">
             <AtSign size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
@@ -344,14 +505,30 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
               type="text"
               className="profile-input profile-input-prefixed"
               value={telegram}
-              onChange={(e) => { setTelegram(e.target.value.replace(/^@/, '')); setProfileError(''); }}
+              onChange={(e) => {
+                setTelegram(e.target.value.replace(/^@/, ''));
+                clearProfileFeedback();
+              }}
               maxLength={32}
               placeholder="username"
             />
           </div>
         </div>
 
-        {profileError && <p className="profile-inline-error">{profileError}</p>}
+        {profileError && (
+          <div className="profile-error-card" role="alert" aria-live="polite">
+            <div className="profile-error-header">
+              <AlertTriangle size={16} />
+              <span>{profileError.title}</span>
+            </div>
+            <p className="profile-error-message">{profileError.message}</p>
+            <p className="profile-error-hint">{profileError.actionHint}</p>
+            {profileError.technicalCode && (
+              <p className="profile-error-code">Reference: {profileError.technicalCode}</p>
+            )}
+          </div>
+        )}
+
         {profileSuccess && (
           <p className="profile-inline-success"><Check size={14} /> Profile saved successfully.</p>
         )}
@@ -361,14 +538,13 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
           onClick={handleSaveProfile}
           disabled={profileSaving}
         >
-          {profileSaving ? 'Saving…' : 'Save Profile'}
+          {profileSaving ? 'Saving...' : 'Save Profile'}
         </button>
       </section>
 
-      {/* ── Telegram Notifications ── */}
       <section className="profile-section">
         <h3 className="profile-section-title"><AtSign size={13} /> Telegram Notifications</h3>
-        
+
         {participant.telegram_chat_id ? (
           <div className="telegram-linked-container">
             <div className="telegram-badge-active">
@@ -376,7 +552,7 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
               Telegram Linked Successfully
             </div>
             <p className="telegram-desc-text">
-              Your account is successfully paired with the bot. You are set to receive real-time goal scores, lock warnings, and payout details!
+              Your account is successfully paired with the bot. You are set to receive real-time goal scores, lock warnings, and payout details.
             </p>
             {participant.telegram_user && (
               <div className="telegram-meta-row">
@@ -384,9 +560,9 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
                 <span className="meta-value">@{participant.telegram_user}</span>
               </div>
             )}
-            
+
             <div className="telegram-btn-row">
-              <button 
+              <button
                 onClick={handleSendTestMessage}
                 disabled={sendingTest}
                 className="btn-telegram-test"
@@ -394,7 +570,7 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
                 <Send size={13} style={{ marginRight: 6 }} />
                 {sendingTest ? 'Sending...' : 'Send Test Alert'}
               </button>
-              <button 
+              <button
                 onClick={handleUnlinkTelegram}
                 disabled={unlinking}
                 className="btn-telegram-unlink"
@@ -403,40 +579,39 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
                 {unlinking ? 'Unlinking...' : 'Unlink Bot'}
               </button>
             </div>
-            
+
             {testSuccess && <p className="profile-inline-success" style={{ marginTop: 12 }}><Check size={14} /> Test message sent! Check your Telegram app.</p>}
             {testError && <p className="profile-inline-error" style={{ marginTop: 12 }}>{testError}</p>}
           </div>
         ) : (
           <div className="telegram-unlinked-container">
             <p className="telegram-desc-text">
-              Receive instant alerts for live goals, deadline warnings (1 hour before match locking), and prediction stake resolutions directly in Telegram!
+              Receive instant alerts for live goals, deadline warnings (1 hour before match locking), and prediction stake resolutions directly in Telegram.
             </p>
-            
+
             <div className="telegram-pairing-instructions">
               <div className="pairing-step">
                 <span className="step-num">1</span>
-                <span>Click the button below to open `@WC2026_El_casino_bot` in Telegram.</span>
+                <span>Click the button below to open <code>@WC2026_El_casino_bot</code> in Telegram.</span>
               </div>
               <div className="pairing-step">
                 <span className="step-num">2</span>
-                <span>Press the <b>Start</b> button at the bottom of the chat to securely pair your wallet!</span>
+                <span>Press the <b>Start</b> button at the bottom of the chat to securely pair your wallet.</span>
               </div>
             </div>
 
-            <a 
-              href={"https://t.me/WC2026_El_casino_bot?start=" + participant.id}
-              target="_blank" 
+            <a
+              href={`https://t.me/WC2026_El_casino_bot?start=${participant.id}`}
+              target="_blank"
               rel="noopener noreferrer"
               className="btn-telegram-link"
             >
-              🤖 Pair Telegram Bot
+              Pair Telegram Bot
             </a>
           </div>
         )}
       </section>
 
-      {/* ── Change PIN ── */}
       {participant.pin && (
         <section className="profile-section">
           <h3 className="profile-section-title"><Lock size={13} /> Change PIN</h3>
@@ -460,12 +635,11 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
               confirmPin.join('').length !== 4
             }
           >
-            {pinSaving ? 'Updating…' : 'Change PIN'}
+            {pinSaving ? 'Updating...' : 'Change PIN'}
           </button>
         </section>
       )}
 
-      {/* ── Logout ── */}
       <section className="profile-section profile-section-danger">
         <button className="profile-logout-btn" onClick={onLogout}>
           <LogOut size={16} /> Switch Player / Log Out
