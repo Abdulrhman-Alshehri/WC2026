@@ -59,7 +59,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "8781107836:AAHncz26sC_UGey4U5_XNXFv6Peq-cox6rk";
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
+    if (!botToken) {
+      throw new Error("Missing TELEGRAM_BOT_TOKEN environment variable.");
+    }
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new Error("Missing Supabase configuration environment variables.");

@@ -309,20 +309,21 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
       const balance = wallet ? wallet.balance : 1000000;
       const formattedBalance = new Intl.NumberFormat('en-US').format(Number(balance));
 
-      const res = await fetch('https://api.telegram.org/bot8781107836:AAHncz26sC_UGey4U5_XNXFv6Peq-cox6rk/sendMessage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: Number(participant.telegram_chat_id),
-          text: `FWC 2026 Prediction Pool Notification Test\n\nYour Telegram pairing is active and working.\n\nCurrent Balance: ${formattedBalance} Coins`,
-        }),
+      const { data, error } = await supabase.functions.invoke('telegram-webhook', {
+        body: {
+          event: 'test',
+          chat_id: participant.telegram_chat_id,
+          data: {
+            balance: formattedBalance
+          }
+        }
       });
 
-      if (res.ok) {
+      if (!error && data?.success) {
         setTestSuccess(true);
         setTimeout(() => setTestSuccess(false), 5000);
       } else {
-        setTestError('Failed to trigger message. Telegram API error.');
+        setTestError(error?.message || 'Failed to trigger message. Edge Function returned an error.');
       }
     } catch (err) {
       setTestError('Failed to connect to Telegram API.');
