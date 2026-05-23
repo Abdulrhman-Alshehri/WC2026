@@ -13,6 +13,7 @@ interface UsePageTransitionResult {
   videoRef: RefObject<HTMLVideoElement | null>;
   navigateWithTransition: (targetPage: string) => void;
   handleVideoEnded: () => void;
+  playOnce: (onComplete?: () => void) => void;
 }
 
 const START_GRACE_MS = 500;
@@ -22,6 +23,7 @@ const DURATION_BUFFER_MS = 300;
 export function usePageTransition({ currentPage, onCommitPage }: UsePageTransitionArgs): UsePageTransitionResult {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pendingPageRef = useRef<string | null>(null);
+  const pendingCallbackRef = useRef<(() => void) | null>(null);
   const phaseRef = useRef<TransitionPhase>('idle');
   const [isActive, setIsActive] = useState(false);
   const startGuardRef = useRef<number | null>(null);
@@ -47,10 +49,16 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
 
     const pendingPage = pendingPageRef.current;
     pendingPageRef.current = null;
+    const pendingCb = pendingCallbackRef.current;
+    pendingCallbackRef.current = null;
 
     if (pendingPage) {
       flushSync(() => {
         onCommitPage(pendingPage);
+      });
+    } else if (pendingCb) {
+      flushSync(() => {
+        pendingCb();
       });
     }
 
@@ -72,19 +80,9 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
     finalizeTransition();
   }, [finalizeTransition]);
 
-  const navigateWithTransition = useCallback((targetPage: string) => {
-    if (targetPage === currentPage) return;
-    if (phaseRef.current !== 'idle') return;
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      onCommitPage(targetPage);
-      return;
-    }
-
+  // Shared playback engine used by both navigateWithTransition and playOnce
+  const startPlayback = useCallback(() => {
     const video = videoRef.current;
-    pendingPageRef.current = targetPage;
-    phaseRef.current = 'exiting';
-    setIsActive(true);
 
     if (!video) {
       finalizeTransition();
@@ -92,7 +90,6 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
     }
 
     video.currentTime = 0;
-
     const playPromise = video.play();
 
     startGuardRef.current = window.setTimeout(() => {
@@ -116,7 +113,44 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
         finalizeTransition();
       });
     }
-  }, [currentPage, finalizeTransition, onCommitPage]);
+  }, [finalizeTransition]);
+
+  const navigateWithTransition = useCallback((targetPage: string) => {
+    if (targetPage === currentPage) return;
+    if (phaseRef.current !== 'idle') return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      onCommitPage(targetPage);
+      return;
+    }
+
+    pendingPageRef.current = targetPage;
+    phaseRef.current = 'exiting';
+    setIsActive(true);
+    startPlayback();
+  }, [currentPage, onCommitPage, startPlayback]);
+
+  // Generic one-shot play: shows overlay, plays video, then runs onComplete.
+  // Used for intro reveal and login transition. Silently skips if video not ready.
+  const playOnce = useCallback((onComplete?: () => void) => {
+    if (phaseRef.current !== 'idle') return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      onComplete?.();
+      return;
+    }
+
+    const video = videoRef.current;
+    if (!video || video.readyState < 3) {
+      onComplete?.();
+      return;
+    }
+
+    pendingCallbackRef.current = onComplete ?? null;
+    phaseRef.current = 'exiting';
+    setIsActive(true);
+    startPlayback();
+  }, [startPlayback]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -134,6 +168,7 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
         video.pause();
       }
       pendingPageRef.current = null;
+      pendingCallbackRef.current = null;
       phaseRef.current = 'idle';
     };
   }, [clearTimers]);
@@ -143,5 +178,6 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
     videoRef,
     navigateWithTransition,
     handleVideoEnded,
+    playOnce,
   };
 }

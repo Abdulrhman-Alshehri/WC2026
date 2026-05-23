@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Participant, Match, Prediction, LeaderboardEntry } from './types';
 import { DEMO_PARTICIPANTS } from './lib/data';
@@ -25,7 +25,7 @@ function App() {
 
   const [currentPage, setCurrentPage] = useState('dashboard');
   
-  const { videoRef, isActive, navigateWithTransition, handleVideoEnded } = usePageTransition({
+  const { videoRef, isActive, navigateWithTransition, handleVideoEnded, playOnce } = usePageTransition({
     currentPage,
     onCommitPage: setCurrentPage,
   });
@@ -140,8 +140,30 @@ function App() {
 
 
   const handleSelectIdentity = useCallback((participant: Participant) => {
-    setCurrentUser(participant);
-    localStorage.setItem('wc2026_user', JSON.stringify(participant));
+    playOnce(() => {
+      setCurrentUser(participant);
+      localStorage.setItem('wc2026_user', JSON.stringify(participant));
+    });
+  }, [playOnce]);
+
+  // Intro reveal: play once as soon as the video is ready on first load
+  const introPlayedRef = useRef(false);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const tryIntro = () => {
+      if (!introPlayedRef.current) {
+        introPlayedRef.current = true;
+        playOnce();
+      }
+    };
+    if (video.readyState >= 3) {
+      tryIntro();
+    } else {
+      video.addEventListener('canplay', tryIntro, { once: true });
+      return () => video.removeEventListener('canplay', tryIntro);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -316,25 +338,23 @@ function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  if (!currentUser) {
-    return (
-      <IdentitySelector
-        participants={participants}
-        onSelect={handleSelectIdentity}
-      />
-    );
-  }
-
   const matchMap = new Map(matches.map(m => [m.id, m]));
   const predictionsList = Array.from(predictions.values());
 
   return (
-    <div className="app">
+    <>
       <TransitionOverlay
         isActive={isActive}
         onEnded={handleVideoEnded}
         videoRef={videoRef}
       />
+      {!currentUser ? (
+        <IdentitySelector
+          participants={participants}
+          onSelect={handleSelectIdentity}
+        />
+      ) : (
+      <div className="app">
       <TopNav
         participant={currentUser}
         balance={balance}
@@ -392,7 +412,9 @@ function App() {
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
-    </div>
+      </div>
+      )}
+    </>
   );
 }
 
