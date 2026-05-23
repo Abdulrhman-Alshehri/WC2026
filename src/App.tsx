@@ -294,7 +294,12 @@ function App() {
   const handleEditPrediction = useCallback(async (matchId: string, predictionId: string, prediction: string, stake: number) => {
     console.log("[App.tsx] handleEditPrediction invoked:", { matchId, predictionId, prediction, stake, currentUser });
     if (!currentUser) return;
-    
+
+    // Capture old values before mutating anything
+    const oldPred = predictions.get(matchId);
+    const oldPrediction = oldPred?.prediction;
+    const oldStake = oldPred?.stake;
+
     setPredictingMatch(null);
     showToast('Updating prediction...');
 
@@ -312,7 +317,7 @@ function App() {
     }
 
     console.log("[App.tsx] Supabase update_prediction RPC Succeeded! Response:", data);
-    
+
     // Refresh user data from Supabase
     queryClient.invalidateQueries({ queryKey: ['userData', currentUser.id] });
     queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
@@ -322,9 +327,29 @@ function App() {
       ? matchObj?.home_team
       : prediction === 'DRAW' ? 'Draw'
       : matchObj?.away_team;
-      
+
     showToast(`Prediction updated! New stake is ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
-  }, [currentUser, matches, queryClient]);
+
+    // Trigger Telegram notification if user has paired bot
+    if (currentUser.telegram_chat_id && matchObj && oldPrediction !== undefined && oldStake !== undefined) {
+      supabase.functions.invoke('telegram-webhook', {
+        body: {
+          event: 'prediction_updated',
+          chat_id: currentUser.telegram_chat_id,
+          data: {
+            match_id: matchId,
+            home_team: matchObj.home_team,
+            away_team: matchObj.away_team,
+            old_prediction: oldPrediction,
+            new_prediction: prediction,
+            old_stake: oldStake,
+            new_stake: stake,
+            balance: data.new_balance,
+          },
+        },
+      });
+    }
+  }, [currentUser, matches, predictions, queryClient]);
 
   const handleCancelPrediction = useCallback(async (predictionId: string) => {
     if (!currentUser) return;

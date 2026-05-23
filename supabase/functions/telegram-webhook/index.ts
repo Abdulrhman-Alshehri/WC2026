@@ -166,6 +166,24 @@ Deno.serve(async (req) => {
           `Your prediction on *${data.home_team} vs ${data.away_team}* has been cancelled.\n` +
           `💰 *Stake Refunded:* \`+${stakeFormatted} Coins\`\n\n` +
           `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
+      } else if (event === 'prediction_updated') {
+        notificationType = 'TELEGRAM_PREDICTION_UPDATED';
+        const balanceFormatted = formatCoins(data.balance);
+        const outcomeChanged = data.old_prediction !== data.new_prediction;
+        const stakeChanged = Number(data.old_stake) !== Number(data.new_stake);
+
+        let diffLines = '';
+        if (outcomeChanged) {
+          diffLines += `📝 *Choice:* \`${data.old_prediction} → ${data.new_prediction}\`\n`;
+        }
+        if (stakeChanged) {
+          diffLines += `💰 *Stake:* \`${formatCoins(data.old_stake)} → ${formatCoins(data.new_stake)} Coins\`\n`;
+        }
+
+        text = `✏️ *Prediction Updated!* ⚽\n\n` +
+          `🆚 *${data.home_team} vs ${data.away_team}*\n\n` +
+          diffLines + `\n` +
+          `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
       } else if (event === 'prediction_resolved') {
         notificationType = 'TELEGRAM_PREDICTION_RESOLVED';
         const isWin = data.status === 'WON';
