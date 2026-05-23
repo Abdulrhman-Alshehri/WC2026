@@ -7,6 +7,24 @@ import { supabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { Activity, RefreshCw, Trophy, Zap } from 'lucide-react';
 
+const TEAM_ISO_MAP: Record<string, string> = {
+  POR: 'pt', MAR: 'ma', IRN: 'ir', PAR: 'py', SCO: 'gb-sct', COL: 'co', GER: 'de',
+  IRQ: 'iq', AUT: 'at', KSA: 'sa', AUS: 'au', ALG: 'dz', GHA: 'gh', NZL: 'nz',
+  PAN: 'pa', UZB: 'uz', URY: 'uy', URU: 'uy', JPN: 'jp', CPV: 'cv', TUR: 'tr',
+  FRA: 'fr', HAI: 'ht', JOR: 'jo', BRA: 'br', RSA: 'za', ENG: 'gb-eng', SWE: 'se',
+  CAN: 'ca', USA: 'us', KOR: 'kr', NOR: 'no', BEL: 'be', TUN: 'tn', CUW: 'cw',
+  EGY: 'eg', NED: 'nl', CIV: 'ci', ECU: 'ec', COD: 'cd', BIH: 'ba', ESP: 'es',
+  SEN: 'sn', QAT: 'qa', MEX: 'mx', CRO: 'hr', ARG: 'ar', CZE: 'cz', SUI: 'ch'
+};
+
+function getTeamFlagUrl(teamCode: string | null, logoUrl: string | null): string {
+  if (logoUrl) return logoUrl;
+  if (!teamCode) return '';
+  const iso = TEAM_ISO_MAP[teamCode.toUpperCase()];
+  if (!iso) return '';
+  return `https://flagcdn.com/w320/${iso.toLowerCase()}.png`;
+}
+
 interface Props {
   matches: Match[];
   predictions: Map<string, Prediction>;
@@ -105,13 +123,29 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
           </div>
         ) : nextMatch ? (
           <div className="hero-countdown-wrapper">
-            <h2 className="hero-title">Next Match</h2>
-            <div className="hero-match-preview">
-              <span>{nextMatch.home_team}</span>
-              <span className="hero-vs">vs</span>
-              <span>{nextMatch.away_team}</span>
+            <div className="hero-flag-container home">
+              <img 
+                src={getTeamFlagUrl(nextMatch.home_team_code, nextMatch.home_logo_url)} 
+                alt={nextMatch.home_team} 
+                className="hero-flag-img" 
+              />
             </div>
-            <Countdown targetDate={nextMatch.kickoff_utc} label="Kickoff in" />
+            <div className="hero-countdown-details">
+              <h2 className="hero-title">Next Match</h2>
+              <div className="hero-match-preview">
+                <span>{nextMatch.home_team}</span>
+                <span className="hero-vs">vs</span>
+                <span>{nextMatch.away_team}</span>
+              </div>
+              <Countdown targetDate={nextMatch.kickoff_utc} label="Kickoff in" />
+            </div>
+            <div className="hero-flag-container away">
+              <img 
+                src={getTeamFlagUrl(nextMatch.away_team_code, nextMatch.away_logo_url)} 
+                alt={nextMatch.away_team} 
+                className="hero-flag-img" 
+              />
+            </div>
           </div>
         ) : (
           <div className="hero-complete">
@@ -139,10 +173,10 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
       {syncBanner && (
         <div className={`sync-notification-banner ${syncBanner.type}`}>
           <div className="sync-notification-content">
-            <span className="sync-notification-icon">{syncBanner.type === 'success' ? '?' : syncBanner.type === 'warning' ? '!' : '×'}</span>
+            <span className="sync-notification-icon">{syncBanner.type === 'success' ? '?' : syncBanner.type === 'warning' ? '!' : 'ï¿½'}</span>
             <span>{syncBanner.message}</span>
           </div>
-          <button onClick={() => setSyncBanner(null)} className="sync-notification-close">×</button>
+          <button onClick={() => setSyncBanner(null)} className="sync-notification-close">ï¿½</button>
         </div>
       )}
 
