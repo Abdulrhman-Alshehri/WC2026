@@ -29,12 +29,12 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
       </nav>
 
       <div className="topnav-right">
-        <div className="balance-chip-container">
-          <div className="balance-chip">
-            <Coins size={16} className="balance-icon" />
+        <div className="balance-chip">
+          <Coins size={16} className="balance-icon" />
+          <div className="balance-chip-text">
             <span className="balance-amount">{formatCoins(balance)}</span>
+            {inPlay > 0 && <span className="in-play-label">{formatCoins(inPlay)} in play</span>}
           </div>
-          {inPlay > 0 && <div className="in-play-badge">{formatCoins(inPlay)} in play</div>}
         </div>
         <button className="topnav-user" onClick={onOpenProfile} title="Profile settings">
           <span className="topnav-user-name">{participant.display_name || participant.name}</span>

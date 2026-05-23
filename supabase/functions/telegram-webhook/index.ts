@@ -55,7 +55,18 @@ async function sendTelegramMessage(
 
 // Helper to format coin balances with commas (e.g. 1,250,000)
 function formatCoins(amount: number | string): string {
-  return new Intl.NumberFormat('en-US').format(Number(amount));
+  if (typeof amount === 'string') {
+    // If it's already a formatted string containing commas, return it as-is
+    if (amount.includes(',')) {
+      return amount;
+    }
+    // Clean up any non-numeric characters except decimal points
+    const cleanAmount = amount.replace(/[^0-9.]/g, '');
+    const num = Number(cleanAmount);
+    return isNaN(num) ? amount : new Intl.NumberFormat('en-US').format(num);
+  }
+  const num = Number(amount);
+  return isNaN(num) ? String(amount) : new Intl.NumberFormat('en-US').format(num);
 }
 
 // Helper to log notifications to the public.notifications_log table

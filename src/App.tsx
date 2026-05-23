@@ -270,6 +270,25 @@ function App() {
       : matchObj?.away_team;
       
     showToast(`Prediction locked! Staked ${new Intl.NumberFormat('en-US').format(stake)} coins on ${teamName}.`);
+
+    // Trigger Telegram notification if user has paired bot
+    if (currentUser.telegram_chat_id && matchObj) {
+      console.log("[App.tsx] Triggering Telegram prediction_placed webhook...");
+      supabase.functions.invoke('telegram-webhook', {
+        body: {
+          event: 'prediction_placed',
+          chat_id: currentUser.telegram_chat_id,
+          data: {
+            match_id: matchId,
+            stake: stake,
+            home_team: matchObj.home_team,
+            away_team: matchObj.away_team,
+            prediction: prediction,
+            balance: data.new_balance
+          }
+        }
+      }).catch(err => console.error("[App.tsx] Failed to trigger Telegram prediction notification:", err));
+    }
   }, [currentUser, matches, queryClient]);
 
   const handleEditPrediction = useCallback(async (matchId: string, predictionId: string, prediction: string, stake: number) => {
@@ -310,6 +329,10 @@ function App() {
   const handleCancelPrediction = useCallback(async (predictionId: string) => {
     if (!currentUser) return;
     
+    // Find prediction details before it gets deleted from local cache/database
+    const predObj = Array.from(predictions.values()).find(p => p.id === predictionId);
+    const matchObj = predObj ? matches.find(m => m.id === predObj.match_id) : null;
+
     setConfirmModal({
       isOpen: true,
       title: 'Cancel Prediction',
@@ -336,9 +359,28 @@ function App() {
         queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
         
         showToast('Prediction cancelled successfully! Stake fully refunded.');
+
+        // Trigger Telegram notification if user has paired bot
+        if (currentUser.telegram_chat_id && predObj && matchObj) {
+          const refundBalance = balance + Number(predObj.stake);
+          console.log("[App.tsx] Triggering Telegram prediction_cancelled webhook...");
+          supabase.functions.invoke('telegram-webhook', {
+            body: {
+              event: 'prediction_cancelled',
+              chat_id: currentUser.telegram_chat_id,
+              data: {
+                match_id: predObj.match_id,
+                stake: predObj.stake,
+                home_team: matchObj.home_team,
+                away_team: matchObj.away_team,
+                balance: refundBalance
+              }
+            }
+          }).catch(err => console.error("[App.tsx] Failed to trigger Telegram cancellation notification:", err));
+        }
       }
     });
-  }, [currentUser, queryClient]);
+  }, [currentUser, queryClient, predictions, balance, matches]);
 
   const showToast = (message: string) => {
     setToast(message);
