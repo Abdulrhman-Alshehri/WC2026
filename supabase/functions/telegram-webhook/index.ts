@@ -25,7 +25,11 @@ interface TelegramUpdate {
   };
 }
 
-async function sendTelegramMessage(chatId: number, text: string, botToken: string) {
+async function sendTelegramMessage(
+  chatId: number,
+  text: string,
+  botToken: string
+): Promise<{ success: boolean; error?: string }> {
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
   try {
     const res = await fetch(url, {
@@ -38,10 +42,47 @@ async function sendTelegramMessage(chatId: number, text: string, botToken: strin
       }),
     });
     if (!res.ok) {
-      console.error(`Telegram API error: ${res.status} ${await res.text()}`);
+      const errText = await res.text();
+      console.error(`Telegram API error: ${res.status} ${errText}`);
+      return { success: false, error: `Telegram API error: ${res.status} - ${errText}` };
     }
+    return { success: true };
   } catch (err) {
     console.error('Failed to send Telegram message:', err);
+    return { success: false, error: err.message || String(err) };
+  }
+}
+
+// Helper to format coin balances with commas (e.g. 1,250,000)
+function formatCoins(amount: number | string): string {
+  return new Intl.NumberFormat('en-US').format(Number(amount));
+}
+
+// Helper to log notifications to the public.notifications_log table
+async function logNotification(
+  supabase: any,
+  type: string,
+  matchId: string | null,
+  payload: any,
+  status: 'SENT' | 'FAILED',
+  errorText: string | null = null
+) {
+  try {
+    const { error } = await supabase
+      .from('notifications_log')
+      .insert({
+        type: type,
+        match_id: matchId,
+        payload: payload,
+        sent_at: new Date().toISOString(),
+        status: status,
+        error: errorText,
+      });
+    if (error) {
+      console.error('Failed to write to notifications_log:', error);
+    }
+  } catch (err) {
+    console.error('Failed to write to notifications_log (exception):', err);
   }
 }
 
@@ -77,6 +118,7 @@ Deno.serve(async (req) => {
       console.log(`Received database/system notification event: ${body.event}`);
       const { event, chat_id, data } = body;
       const targetChatId = chat_id || data?.telegram_chat_id;
+      const matchId = data?.match_id || null;
 
       if (!targetChatId) {
         return new Response(JSON.stringify({ success: false, error: "No Telegram Chat ID found for notification" }), {
@@ -86,46 +128,68 @@ Deno.serve(async (req) => {
       }
 
       let text = "";
+      let notificationType = "";
+
       if (event === 'test') {
+        notificationType = 'TELEGRAM_TEST';
+        const balanceFormatted = formatCoins(data.balance);
         text = `🔔 *FWC 2026 Prediction Pool Notification Test*\n\n` +
           `Your Telegram pairing is active and working perfectly! 🎉\n\n` +
-          `💰 *Current Balance:* \`${data.balance} Coins\`\n\n` +
+          `💰 *Current Balance:* \`${balanceFormatted} Coins\`\n\n` +
           `You will receive alerts here for goal scores and predictions resolution! ⚽🤖`;
       } else if (event === 'prediction_placed') {
+        notificationType = 'TELEGRAM_PREDICTION_PLACED';
+        const stakeFormatted = formatCoins(data.stake);
+        const balanceFormatted = formatCoins(data.balance);
         text = `🎯 *Prediction Placed!* ⚽\n\n` +
-          `You successfully staked *${data.stake} Coins* on the match:\n` +
+          `You successfully staked *${stakeFormatted} Coins* on the match:\n` +
           `🆚 *${data.home_team} vs ${data.away_team}*\n` +
           `📝 *Your Choice:* \`${data.prediction}\`\n\n` +
-          `💎 *New Liquid Balance:* \`${data.balance} Coins\`\n` +
+          `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\`\n\n` +
           `Good luck! 🏆`;
       } else if (event === 'prediction_cancelled') {
+        notificationType = 'TELEGRAM_PREDICTION_CANCELLED';
+        const stakeFormatted = formatCoins(data.stake);
+        const balanceFormatted = formatCoins(data.balance);
         text = `❌ *Prediction Cancelled!*\n\n` +
           `Your prediction on *${data.home_team} vs ${data.away_team}* has been cancelled.\n` +
-          `💰 *Stake Refunded:* \`+${data.stake} Coins\`\n\n` +
-          `💎 *New Liquid Balance:* \`${data.balance} Coins\``;
+          `💰 *Stake Refunded:* \`+${stakeFormatted} Coins\`\n\n` +
+          `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
       } else if (event === 'prediction_resolved') {
+        notificationType = 'TELEGRAM_PREDICTION_RESOLVED';
         const isWin = data.status === 'WON';
-        text = isWin 
-          ? `🎉 *Staking Win! Payout Processed!* 💰\n\n` +
+        const stakeFormatted = formatCoins(data.stake);
+        const balanceFormatted = formatCoins(data.balance);
+
+        if (isWin) {
+          const payoutFormatted = formatCoins(data.payout);
+          const profitFormatted = formatCoins(data.profit);
+          text = `🎉 *Staking Win! Payout Processed!* 💰\n\n` +
             `Match *${data.home_team} vs ${data.away_team}* is resolved.\n` +
             `🏁 *Result:* \`${data.home_score} - ${data.away_score}\`\n\n` +
             `📈 *Prediction:* \`${data.prediction}\` (WON)\n` +
-            `💸 *Staked:* \`${data.stake} Coins\`\n` +
-            `🎁 *Net Payout:* \`+${data.payout} Coins\` (Profit: +${data.profit} Coins) 🎉\n\n` +
-            `💎 *New Liquid Balance:* \`${data.balance} Coins\``
-          : `💔 *Prediction Settled*\n\n` +
+            `💸 *Staked:* \`${stakeFormatted} Coins\`\n` +
+            `🎁 *Net Payout:* \`+${payoutFormatted} Coins\` (Profit: +${profitFormatted} Coins) 🎉\n\n` +
+            `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
+        } else {
+          text = `💔 *Prediction Settled*\n\n` +
             `Match *${data.home_team} vs ${data.away_team}* is resolved.\n` +
             `🏁 *Result:* \`${data.home_score} - ${data.away_score}\`\n\n` +
             `📈 *Prediction:* \`${data.prediction}\` (LOST)\n` +
-            `💸 *Staked:* \`${data.stake} Coins\` (Lost)\n\n` +
-            `💎 *New Liquid Balance:* \`${data.balance} Coins\``;
+            `💸 *Staked:* \`${stakeFormatted} Coins\` (Lost)\n\n` +
+            `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
+        }
       }
 
       if (text) {
-        await sendTelegramMessage(Number(targetChatId), text, botToken);
+        const sendResult = await sendTelegramMessage(Number(targetChatId), text, botToken);
+        const status = sendResult.success ? 'SENT' : 'FAILED';
+        const errorText = sendResult.error || null;
+        
+        await logNotification(supabase, notificationType, matchId, body, status, errorText);
       }
 
-      return new Response(JSON.stringify({ success: true, message: "Notification sent successfully" }), {
+      return new Response(JSON.stringify({ success: true, message: "Notification processed successfully" }), {
         headers: corsHeaders,
         status: 200,
       });
@@ -205,7 +269,7 @@ Deno.serve(async (req) => {
           .single();
 
         const formattedBalance = wallet 
-          ? new Intl.NumberFormat('en-US').format(Number(wallet.balance))
+          ? formatCoins(wallet.balance)
           : '1,000,000';
 
         const displayName = participant.display_name || participant.name;
@@ -220,7 +284,11 @@ Deno.serve(async (req) => {
           `💎 *Current Balance:* \`${formattedBalance} Coins\`\n\n` +
           `Good luck with your predictions! ⚽🔥`;
 
-        await sendTelegramMessage(chatId, welcomeText, botToken);
+        const sendResult = await sendTelegramMessage(chatId, welcomeText, botToken);
+        const status = sendResult.success ? 'SENT' : 'FAILED';
+        const errorText = sendResult.error || null;
+        
+        await logNotification(supabase, 'TELEGRAM_WELCOME', null, { participant_id: participantId, username: cleanUsername, chat_id: chatId }, status, errorText);
         console.log(`Successfully paired Chat ID ${chatId} with Participant: ${displayName}`);
 
       } else {
