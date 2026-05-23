@@ -8,10 +8,10 @@ interface Props {
   inPlay: number;
   onNavigate: (page: string) => void;
   currentPage: string;
-  onLogout: () => void;
+  onOpenProfile: () => void;
 }
 
-export default function TopNav({ participant, balance, inPlay, onNavigate, currentPage, onLogout }: Props) {
+export default function TopNav({ participant, balance, inPlay, onNavigate, currentPage, onOpenProfile }: Props) {
   return (
     <>
     <header className="topnav">
@@ -36,7 +36,7 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
           </div>
           {inPlay > 0 && <div className="in-play-badge">{formatCoins(inPlay)} in play</div>}
         </div>
-        <button className="topnav-user" onClick={onLogout} title="Switch player">
+        <button className="topnav-user" onClick={onOpenProfile} title="Profile settings">
           <span className="topnav-user-name">{participant.display_name || participant.name}</span>
           <span className="topnav-user-avatar">
             {participant.photo_url ? <img src={participant.photo_url} alt={participant.name} /> : participant.name.charAt(0).toUpperCase()}

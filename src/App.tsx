@@ -11,6 +11,7 @@ import PredictionHistory from './components/PredictionHistory';
 import PredictionModal from './components/PredictionModal';
 import ConfirmModal from './components/ConfirmModal';
 import TransitionOverlay from './components/TransitionOverlay';
+import ProfileSettings from './components/ProfileSettings';
 import { usePageTransition } from './hooks/usePageTransition';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
   });
 
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [previousPage, setPreviousPage] = useState('dashboard');
   
   const { videoRef, isActive, navigateWithTransition, handleVideoEnded, playOnce } = usePageTransition({
     currentPage,
@@ -49,7 +51,7 @@ function App() {
   const { data: participants = DEMO_PARTICIPANTS } = useQuery({
     queryKey: ['participants'],
     queryFn: async () => {
-      const { data } = await supabase.from('participants').select('id, name, display_name, photo_url, pin').eq('is_active', true).order('name');
+      const { data } = await supabase.from('participants').select('id, name, display_name, photo_url, telegram_user, pin, is_active, created_at').eq('is_active', true).order('name');
       return (data as Participant[]) || [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour
@@ -170,6 +172,11 @@ function App() {
     setCurrentUser(null);
     localStorage.removeItem('wc2026_user');
   }, []);
+
+  const handleOpenProfile = useCallback(() => {
+    setPreviousPage(currentPage);
+    navigateWithTransition('profile');
+  }, [currentPage, navigateWithTransition]);
 
   const handleNavigate = useCallback((page: string) => {
     navigateWithTransition(page);
@@ -361,7 +368,7 @@ function App() {
         inPlay={inPlay}
         onNavigate={handleNavigate}
         currentPage={currentPage}
-        onLogout={handleLogout}
+        onOpenProfile={handleOpenProfile}
       />
 
       <main className="main-content">
@@ -384,6 +391,17 @@ function App() {
             predictions={predictionsList}
             matches={matchMap}
             onNavigateToDashboard={() => handleNavigate('dashboard')}
+          />
+        )}
+        {currentPage === 'profile' && (
+          <ProfileSettings
+            participant={currentUser}
+            onProfileUpdated={(updated) => {
+              setCurrentUser(updated);
+              localStorage.setItem('wc2026_user', JSON.stringify(updated));
+            }}
+            onBack={() => handleNavigate(previousPage)}
+            onLogout={handleLogout}
           />
         )}
       </main>
