@@ -5,6 +5,7 @@ import Countdown from './Countdown';
 import MatchCard from './MatchCard';
 import { supabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
+import { Activity, RefreshCw, Trophy, Zap } from 'lucide-react';
 
 interface Props {
   matches: Match[];
@@ -22,43 +23,34 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('dashboard');
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A');
   const [activeKnockout, setActiveKnockout] = useState<KnockoutRound>('R32');
-
-  // Sync state
   const [syncing, setSyncing] = useState(false);
   const [syncBanner, setSyncBanner] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
 
   const now = Date.now();
 
-  // Find next upcoming match for the hero countdown
   const upcomingMatches = useMemo(() => {
     return matches
       .filter(m => m.status === 'NS' && new Date(m.kickoff_utc).getTime() > now)
       .sort((a, b) => new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime());
   }, [matches, now]);
 
-  const liveMatches = useMemo(() => {
-    return matches.filter(m => m.status === 'LIVE' || m.status === 'HT');
-  }, [matches]);
+  const liveMatches = useMemo(() => matches.filter(m => m.status === 'LIVE' || m.status === 'HT'), [matches]);
 
   const finishedMatches = useMemo(() => {
     return matches
       .filter(m => ['FT', 'AET', 'PEN'].includes(m.status))
-      .sort((a, b) => new Date(b.kickoff_utc).getTime() - new Date(a.kickoff_utc).getTime()); // descending for recent results
+      .sort((a, b) => new Date(b.kickoff_utc).getTime() - new Date(a.kickoff_utc).getTime());
   }, [matches]);
 
   const nextMatch = upcomingMatches[0];
-
-  // Calculate prediction stats
   const totalPredictions = predictions.size;
   const wins = Array.from(predictions.values()).filter(p => p.status === 'WON').length;
   const totalWinnings = Array.from(predictions.values())
     .filter(p => p.status === 'WON' && p.payout != null)
     .reduce((sum, p) => sum + (p.payout! - p.stake), 0);
 
-  // Group letters
   const groups: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
-  // Knockout rounds mapping
   const knockoutRounds: { key: KnockoutRound; label: string }[] = [
     { key: 'R32', label: 'Round of 32' },
     { key: 'R16', label: 'Round of 16' },
@@ -68,55 +60,33 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
     { key: 'FINAL', label: 'Final' }
   ];
 
-  // Filter group matches
   const filteredGroupMatches = useMemo(() => {
     return matches
       .filter(m => m.stage === 'GROUP' && m.group_name === activeGroup)
       .sort((a, b) => new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime());
   }, [matches, activeGroup]);
 
-  // Filter knockout matches
   const filteredKnockoutMatches = useMemo(() => {
     return matches
       .filter(m => m.stage === activeKnockout)
       .sort((a, b) => new Date(a.kickoff_utc).getTime() - new Date(b.kickoff_utc).getTime());
   }, [matches, activeKnockout]);
 
-  // Handle manual live data sync
   const handleSyncMatches = async () => {
     setSyncing(true);
     setSyncBanner(null);
     try {
-      console.log('Invoking sync-scores Edge Function manually...');
-      // Invoke the Supabase Edge Function securely
-      const { data, error } = await supabase.functions.invoke('sync-scores', {
-        method: 'POST',
-        body: {}
-      });
-
+      const { data, error } = await supabase.functions.invoke('sync-scores', { method: 'POST', body: {} });
       if (error) throw error;
 
-      console.log('sync-scores response data:', data);
-
       if (data && data.success) {
-        setSyncBanner({ 
-          type: 'success', 
-          message: data.message || 'Successfully synchronized matches and scores!' 
-        });
-        // Invalidate react-query cache to refetch fresh matches from Supabase public.matches
+        setSyncBanner({ type: 'success', message: data.message || 'Successfully synchronized matches and scores!' });
         queryClient.invalidateQueries({ queryKey: ['matches'] });
       } else {
-        setSyncBanner({
-          type: 'error',
-          message: data?.message || 'Failed to synchronize matches.'
-        });
+        setSyncBanner({ type: 'error', message: data?.message || 'Failed to synchronize matches.' });
       }
     } catch (err: any) {
-      console.error('Sync error:', err);
-      setSyncBanner({
-        type: 'error',
-        message: `Failed to trigger live matches sync: ${err.message || 'Unknown network error'}`
-      });
+      setSyncBanner({ type: 'error', message: `Failed to trigger live matches sync: ${err.message || 'Unknown network error'}` });
     } finally {
       setSyncing(false);
     }
@@ -124,7 +94,6 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
 
   return (
     <div className="dashboard-page">
-      {/* Hero Section */}
       <section className="hero-section">
         {liveMatches.length > 0 ? (
           <div className="hero-live">
@@ -151,379 +120,117 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
           </div>
         )}
 
-        {/* Quick Stats */}
         <div className="hero-stats">
-          <div className="hero-stat">
+          <div className="hero-stat hero-stat-predictions">
             <span className="stat-value">{totalPredictions}</span>
             <span className="stat-label">Predictions</span>
           </div>
-          <div className="hero-stat">
+          <div className="hero-stat hero-stat-wins">
             <span className="stat-value">{wins}</span>
             <span className="stat-label">Wins</span>
           </div>
-          <div className="hero-stat">
+          <div className="hero-stat hero-stat-net">
             <span className="stat-value">{totalWinnings > 0 ? '+' : ''}{formatCoins(totalWinnings)}</span>
             <span className="stat-label">Net Profit</span>
           </div>
         </div>
       </section>
 
-      {/* Sync Banner Notifications */}
       {syncBanner && (
-        <div 
-          className={`sync-notification-banner ${syncBanner.type}`}
-          style={{
-            padding: '16px',
-            borderRadius: 'var(--radius)',
-            border: `2px solid ${
-              syncBanner.type === 'success' ? 'var(--green)' : syncBanner.type === 'warning' ? '#ff9e81' : 'var(--red)'
-            }`,
-            background: syncBanner.type === 'success' ? '#eefdf3' : syncBanner.type === 'warning' ? '#fffaf0' : '#fdf2f2',
-            color: syncBanner.type === 'success' ? '#006629' : syncBanner.type === 'warning' ? '#b23b00' : 'var(--red)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            fontSize: '0.85rem',
-            animation: 'fadeIn 0.3s ease'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.2rem' }}>
-              {syncBanner.type === 'success' ? '✅' : syncBanner.type === 'warning' ? '⚠️' : '❌'}
-            </span>
+        <div className={`sync-notification-banner ${syncBanner.type}`}>
+          <div className="sync-notification-content">
+            <span className="sync-notification-icon">{syncBanner.type === 'success' ? '?' : syncBanner.type === 'warning' ? '!' : '�'}</span>
             <span>{syncBanner.message}</span>
           </div>
-          <button 
-            onClick={() => setSyncBanner(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'inherit',
-              fontWeight: 'bold',
-              fontSize: '1rem',
-              padding: '0 4px'
-            }}
-          >
-            ×
-          </button>
+          <button onClick={() => setSyncBanner(null)} className="sync-notification-close">�</button>
         </div>
       )}
 
-      {/* Navigation Headers and Sync Trigger */}
-      <div 
-        className="dashboard-nav-container"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: '1px solid rgba(255,255,255,0.7)',
-          paddingBottom: '8px',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        {/* Main Tabs */}
-        <div 
-          className="dashboard-tabs" 
-          style={{ display: 'flex', gap: '6px' }}
-        >
-          <button 
-            className={`topnav-link ${activeMainTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveMainTab('dashboard')}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-sm)',
-              border: activeMainTab === 'dashboard' ? '1px solid rgba(255,255,255,0.85)' : 'none',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '0.85rem',
-              transition: 'all 0.2s',
-              background: activeMainTab === 'dashboard' ? 'rgba(255,255,255,0.7)' : 'none',
-              color: activeMainTab === 'dashboard' ? 'var(--accent)' : 'var(--text3)',
-              borderBottom: activeMainTab === 'dashboard' ? '2px solid var(--accent)' : 'none',
-              backdropFilter: activeMainTab === 'dashboard' ? 'blur(12px)' : 'none'
-            }}
-          >
-            📊 Live & Highlights
+      <div className="dashboard-nav-container">
+        <div className="dashboard-tabs" role="tablist" aria-label="Dashboard views">
+          <button className={`dashboard-tab ${activeMainTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveMainTab('dashboard')}>
+            <Activity size={14} /> Live & Highlights
           </button>
-          <button 
-            className={`topnav-link ${activeMainTab === 'groups' ? 'active' : ''}`}
-            onClick={() => setActiveMainTab('groups')}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-sm)',
-              border: activeMainTab === 'groups' ? '1px solid rgba(255,255,255,0.85)' : 'none',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '0.85rem',
-              transition: 'all 0.2s',
-              background: activeMainTab === 'groups' ? 'rgba(255,255,255,0.7)' : 'none',
-              color: activeMainTab === 'groups' ? 'var(--accent)' : 'var(--text3)',
-              borderBottom: activeMainTab === 'groups' ? '2px solid var(--accent)' : 'none',
-              backdropFilter: activeMainTab === 'groups' ? 'blur(12px)' : 'none'
-            }}
-          >
-            🏆 Group Stage
+          <button className={`dashboard-tab ${activeMainTab === 'groups' ? 'active' : ''}`} onClick={() => setActiveMainTab('groups')}>
+            <Trophy size={14} /> Group Stage
           </button>
-          <button 
-            className={`topnav-link ${activeMainTab === 'knockouts' ? 'active' : ''}`}
-            onClick={() => setActiveMainTab('knockouts')}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-sm)',
-              border: activeMainTab === 'knockouts' ? '1px solid rgba(255,255,255,0.85)' : 'none',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '0.85rem',
-              transition: 'all 0.2s',
-              background: activeMainTab === 'knockouts' ? 'rgba(255,255,255,0.7)' : 'none',
-              color: activeMainTab === 'knockouts' ? 'var(--accent)' : 'var(--text3)',
-              borderBottom: activeMainTab === 'knockouts' ? '2px solid var(--accent)' : 'none',
-              backdropFilter: activeMainTab === 'knockouts' ? 'blur(12px)' : 'none'
-            }}
-          >
-            ⚡ Knockout Rounds
+          <button className={`dashboard-tab ${activeMainTab === 'knockouts' ? 'active' : ''}`} onClick={() => setActiveMainTab('knockouts')}>
+            <Zap size={14} /> Knockout Rounds
           </button>
         </div>
 
-        {/* Sync Action Trigger */}
-        <button
-          onClick={handleSyncMatches}
-          disabled={syncing}
-          className="btn-sync"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'rgba(255,255,255,0.55)',
-            backdropFilter: 'blur(24px) saturate(160%)',
-            WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-            border: '1px solid rgba(255,255,255,0.85)',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            fontSize: '0.8rem',
-            fontWeight: 'bold',
-            color: 'var(--text)',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            opacity: syncing ? 0.7 : 1,
-            boxShadow: '0 8px 32px rgba(100,120,180,0.12), inset 0 1px 0 rgba(255,255,255,0.9)'
-          }}
-        >
-          <span 
-            style={{ 
-              display: 'inline-block', 
-              animation: syncing ? 'spin 1s linear infinite' : 'none' 
-            }}
-          >
-            🔄
-          </span>
+        <button onClick={handleSyncMatches} disabled={syncing} className="btn-sync">
+          <RefreshCw size={14} className={syncing ? 'spinning' : ''} />
           {syncing ? 'Syncing...' : 'Sync Live Scores'}
         </button>
-
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-4px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
       </div>
 
-      {/* Main Tab Views */}
-      
-      {/* View 1: Dashboard Home */}
       {activeMainTab === 'dashboard' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-          {/* Live Matches */}
-          {liveMatches.length > 0 ? (
+        <div className="dashboard-view-stack">
+          {liveMatches.length > 0 && (
             <section className="match-section">
-              <h3 className="section-title">
-                <span className="live-pulse" />
-                Live Matches
-              </h3>
+              <h3 className="section-title"><span className="live-pulse" />Live Matches</h3>
               <div className="match-grid">
-                {liveMatches.map(m => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    prediction={predictions.get(m.id)}
-                    onPredict={onPredict}
-                    onCancelPrediction={onCancelPrediction}
-                  />
-                ))}
+                {liveMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
               </div>
             </section>
-          ) : null}
+          )}
 
-          {/* Next Upcoming Matches */}
           {upcomingMatches.length > 0 && (
             <section className="match-section">
               <h3 className="section-title">Upcoming Fixtures</h3>
               <div className="match-grid">
-                {upcomingMatches.slice(0, 6).map(m => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    prediction={predictions.get(m.id)}
-                    onPredict={onPredict}
-                    onCancelPrediction={onCancelPrediction}
-                  />
-                ))}
+                {upcomingMatches.slice(0, 6).map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
               </div>
             </section>
           )}
 
-          {/* Recent Results */}
           {finishedMatches.length > 0 && (
             <section className="match-section">
               <h3 className="section-title">Recent Results</h3>
               <div className="match-grid">
-                {finishedMatches.slice(0, 6).map(m => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    prediction={predictions.get(m.id)}
-                    onPredict={onPredict}
-                    onCancelPrediction={onCancelPrediction}
-                  />
-                ))}
+                {finishedMatches.slice(0, 6).map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
               </div>
             </section>
           )}
         </div>
       )}
 
-      {/* View 2: Group Stage Explorer */}
       {activeMainTab === 'groups' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Sub Group selector buttons */}
-          <div 
-            className="group-selector-grid"
-            style={{
-              display: 'flex',
-              gap: '6px',
-              overflowX: 'auto',
-              paddingBottom: '8px',
-              scrollbarWidth: 'thin'
-            }}
-          >
+        <div className="dashboard-view-stack compact">
+          <div className="group-selector-grid">
             {groups.map(g => (
-              <button
-                key={g}
-                onClick={() => setActiveGroup(g)}
-                style={{
-                  flex: '0 0 auto',
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  border: activeGroup === g ? '1px solid rgba(91,110,245,0.5)' : '1px solid rgba(255,255,255,0.85)',
-                  background: activeGroup === g ? 'var(--accent)' : 'rgba(255,255,255,0.55)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  color: activeGroup === g ? '#ffffff' : 'var(--text)',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s',
-                  boxShadow: activeGroup === g ? '0 4px 20px rgba(91,110,245,0.3)' : '0 8px 32px rgba(100,120,180,0.12)'
-                }}
-              >
-                {g}
-              </button>
+              <button key={g} onClick={() => setActiveGroup(g)} className={`group-pill ${activeGroup === g ? 'active' : ''}`}>{g}</button>
             ))}
           </div>
-
           <section className="match-section">
             <h3 className="section-title">Group {activeGroup} Fixtures</h3>
             {filteredGroupMatches.length > 0 ? (
               <div className="match-grid">
-                {filteredGroupMatches.map(m => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    prediction={predictions.get(m.id)}
-                    onPredict={onPredict}
-                    onCancelPrediction={onCancelPrediction}
-                  />
-                ))}
+                {filteredGroupMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text3)', fontSize: '0.9rem' }}>
-                No fixtures found for Group {activeGroup}.
-              </div>
+              <div className="state-card"><Zap size={20} />No fixtures found for Group {activeGroup}.</div>
             )}
           </section>
         </div>
       )}
 
-      {/* View 3: Knockout Rounds Explorer */}
       {activeMainTab === 'knockouts' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Knockout Round Sub Tabs */}
-          <div 
-            className="knockout-selector"
-            style={{
-              display: 'flex',
-              gap: '6px',
-              overflowX: 'auto',
-              paddingBottom: '8px',
-              scrollbarWidth: 'thin'
-            }}
-          >
+        <div className="dashboard-view-stack compact">
+          <div className="knockout-selector">
             {knockoutRounds.map(r => (
-              <button
-                key={r.key}
-                onClick={() => setActiveKnockout(r.key)}
-                style={{
-                  flex: '0 0 auto',
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  border: activeKnockout === r.key ? '1px solid rgba(91,110,245,0.5)' : '1px solid rgba(255,255,255,0.85)',
-                  background: activeKnockout === r.key ? 'var(--accent)' : 'rgba(255,255,255,0.55)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  color: activeKnockout === r.key ? '#ffffff' : 'var(--text)',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                  transition: 'all 0.2s',
-                  boxShadow: activeKnockout === r.key ? '0 4px 20px rgba(91,110,245,0.3)' : '0 8px 32px rgba(100,120,180,0.12)'
-                }}
-              >
-                {r.label}
-              </button>
+              <button key={r.key} onClick={() => setActiveKnockout(r.key)} className={`knockout-pill ${activeKnockout === r.key ? 'active' : ''}`}>{r.label}</button>
             ))}
           </div>
-
           <section className="match-section">
-            <h3 className="section-title">
-              {knockoutRounds.find(r => r.key === activeKnockout)?.label} Matches
-            </h3>
+            <h3 className="section-title">{knockoutRounds.find(r => r.key === activeKnockout)?.label} Matches</h3>
             {filteredKnockoutMatches.length > 0 ? (
               <div className="match-grid">
-                {filteredKnockoutMatches.map(m => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    prediction={predictions.get(m.id)}
-                    onPredict={onPredict}
-                    onCancelPrediction={onCancelPrediction}
-                  />
-                ))}
+                {filteredKnockoutMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text3)', fontSize: '0.9rem' }}>
-                No matches scheduled or unlocked for this round yet.
-              </div>
+              <div className="state-card"><Trophy size={20} />No matches scheduled or unlocked for this round yet.</div>
             )}
           </section>
         </div>

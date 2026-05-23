@@ -383,6 +383,7 @@ function App() {
           <PredictionHistory
             predictions={predictionsList}
             matches={matchMap}
+            onNavigateToDashboard={() => handleNavigate('dashboard')}
           />
         )}
       </main>

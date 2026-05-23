@@ -21,46 +21,23 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
       </div>
 
       <nav className="topnav-center">
-        <button
-          className={`topnav-link ${currentPage === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onNavigate('dashboard')}
-        >
-          Matches
-        </button>
-        <button
-          className={`topnav-link ${currentPage === 'leaderboard' ? 'active' : ''}`}
-          onClick={() => onNavigate('leaderboard')}
-        >
-          Leaderboard
-        </button>
-        <button
-          className={`topnav-link ${currentPage === 'history' ? 'active' : ''}`}
-          onClick={() => onNavigate('history')}
-        >
-          History
-        </button>
+        <button className={`topnav-link ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => onNavigate('dashboard')}>Matches</button>
+        <button className={`topnav-link ${currentPage === 'leaderboard' ? 'active' : ''}`} onClick={() => onNavigate('leaderboard')}>Leaderboard</button>
+        <button className={`topnav-link ${currentPage === 'history' ? 'active' : ''}`} onClick={() => onNavigate('history')}>History</button>
       </nav>
 
       <div className="topnav-right">
         <div className="balance-chip-container">
           <div className="balance-chip">
-            <span className="balance-icon">🪙</span>
+            <span className="balance-icon">??</span>
             <span className="balance-amount">{formatCoins(balance)}</span>
           </div>
-          {inPlay > 0 && (
-            <div className="in-play-badge">
-              {formatCoins(inPlay)} in play
-            </div>
-          )}
+          {inPlay > 0 && <div className="in-play-badge">{formatCoins(inPlay)} in play</div>}
         </div>
         <button className="topnav-user" onClick={onLogout} title="Switch player">
           <span className="topnav-user-name">{participant.display_name || participant.name}</span>
           <span className="topnav-user-avatar">
-            {participant.photo_url ? (
-              <img src={participant.photo_url} alt={participant.name} />
-            ) : (
-              participant.name.charAt(0).toUpperCase()
-            )}
+            {participant.photo_url ? <img src={participant.photo_url} alt={participant.name} /> : participant.name.charAt(0).toUpperCase()}
           </span>
         </button>
       </div>
