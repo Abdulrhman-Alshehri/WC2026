@@ -4,6 +4,7 @@ export interface Participant {
   display_name: string | null;
   photo_url: string | null;
   telegram_user: string | null;
+  telegram_chat_id?: string | null;
   pin: string | null;
   is_active: boolean;
   created_at: string;

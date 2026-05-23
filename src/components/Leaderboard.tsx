@@ -22,10 +22,10 @@ export default function Leaderboard({ entries, currentParticipantId }: Props) {
           const medalColor = idx === 0 ? '#FFD700' : idx === 1 ? '#C0C0C0' : '#CD7F32';
           const avatarColor = getAvatarColor(entry.name);
           return (
-            <div key={entry.participant_id} className={`podium-card ${podiumClass} ${entry.participant_id === currentParticipantId ? 'podium-you' : ''}`} style={{ order: idx === 0 ? 1 : idx === 1 ? 0 : 2 }}>
+            <div key={entry.participant_id} className={`podium-card ${podiumClass} ${entry.participant_id === currentParticipantId ? 'podium-you' : ''}`}>
               <span className="podium-medal"><Trophy size={22} color={medalColor} /></span>
               <div className="podium-avatar" style={{ background: `linear-gradient(135deg, ${avatarColor}, ${avatarColor}88)` }}>
-                {entry.photo_url ? <img src={entry.photo_url} alt={entry.name} /> : <span>{entry.name.charAt(0)}</span>}
+                {entry.photo_url ? <img src={entry.photo_url} alt={entry.name} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : <span>{entry.name.charAt(0)}</span>}
               </div>
               <span className="podium-name">{entry.display_name || entry.name}</span>
               <span className="podium-balance"><Coins size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{formatCoins(entry.balance)}</span>
@@ -48,7 +48,7 @@ export default function Leaderboard({ entries, currentParticipantId }: Props) {
             <div key={entry.participant_id} className={`leaderboard-row ${isYou ? 'leaderboard-you' : ''}`}>
               <span className="lb-rank">{entry.rank}</span>
               <div className="lb-avatar" style={{ background: `linear-gradient(135deg, ${avatarColor}, ${avatarColor}88)` }}>
-                {entry.photo_url ? <img src={entry.photo_url} alt={entry.name} /> : <span>{entry.name.charAt(0)}</span>}
+                {entry.photo_url ? <img src={entry.photo_url} alt={entry.name} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} /> : <span>{entry.name.charAt(0)}</span>}
               </div>
               <span className="lb-name">
                 <span className="lb-name-main">{entry.display_name || entry.name}</span>

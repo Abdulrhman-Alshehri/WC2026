@@ -3,7 +3,7 @@ import { Participant } from '../types';
 import { getAvatarColor } from '../lib/data';
 import { supabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, LogOut, User, AtSign, Lock, Check } from 'lucide-react';
+import { ArrowLeft, Camera, LogOut, User, AtSign, Lock, Check, Send, Trash2 } from 'lucide-react';
 
 interface Props {
   participant: Participant;
@@ -24,6 +24,12 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // -- Telegram Staking Notification state variables
+  const [sendingTest, setSendingTest] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [testSuccess, setTestSuccess] = useState(false);
+  const [testError, setTestError] = useState('');
 
   // ── PIN fields ───────────────────────────────────────────────
   const [currentPin, setCurrentPin] = useState(['', '', '', '']);
@@ -116,6 +122,72 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
     setProfileSuccess(true);
     setTimeout(() => setProfileSuccess(false), 3000);
     setProfileSaving(false);
+  };
+
+  // -- Telegram Staking Handlers
+  const handleSendTestMessage = async () => {
+    if (!participant.telegram_chat_id) return;
+    setSendingTest(true);
+    setTestError('');
+    setTestSuccess(false);
+    try {
+      // Fetch dynamic actual balance to show in test message
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('participant_id', participant.id)
+        .single();
+        
+      const balance = wallet ? wallet.balance : 1000000;
+      const formattedBalance = new Intl.NumberFormat('en-US').format(Number(balance));
+
+      const res = await fetch("https://api.telegram.org/bot8781107836:AAHncz26sC_UGey4U5_XNXFv6Peq-cox6rk/sendMessage", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: Number(participant.telegram_chat_id),
+          text: "🔔 *FWC 2026 Prediction Pool Notification Test*\n\nYour Telegram pairing is active and working perfectly! 🎉\n\n💰 *Current Balance:* \x60" + formattedBalance + " Coins\x60\n\nYou will receive alerts here for goal scores and predictions resolution! ⚽🤖",
+          parse_mode: 'Markdown',
+        }),
+      });
+      
+      if (res.ok) {
+        setTestSuccess(true);
+        setTimeout(() => setTestSuccess(false), 5000);
+      } else {
+        setTestError('Failed to trigger message. Telegram API error.');
+      }
+    } catch (err) {
+      setTestError('Failed to connect to Telegram API.');
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    if (!window.confirm('Are you sure you want to unlink Telegram notifications?')) return;
+    setUnlinking(true);
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({
+          telegram_chat_id: null,
+          telegram_user: null,
+        })
+        .eq('id', participant.id);
+
+      if (error) throw error;
+
+      // Update local storage and app state
+      const updated = { ...participant, telegram_chat_id: null, telegram_user: null };
+      localStorage.setItem('wc2026_user', JSON.stringify(updated));
+      queryClient.invalidateQueries({ queryKey: ['participants'] });
+      onProfileUpdated(updated);
+    } catch (err) {
+      alert('Failed to unlink Telegram. Please try again.');
+    } finally {
+      setUnlinking(false);
+    }
   };
 
   // ── PIN digit helpers ────────────────────────────────────────
@@ -291,6 +363,77 @@ export default function ProfileSettings({ participant, onProfileUpdated, onBack,
         >
           {profileSaving ? 'Saving…' : 'Save Profile'}
         </button>
+      </section>
+
+      {/* ── Telegram Notifications ── */}
+      <section className="profile-section">
+        <h3 className="profile-section-title"><AtSign size={13} /> Telegram Notifications</h3>
+        
+        {participant.telegram_chat_id ? (
+          <div className="telegram-linked-container">
+            <div className="telegram-badge-active">
+              <span className="live-pulse" style={{ width: 8, height: 8, background: '#01c752', display: 'inline-block', borderRadius: '50%', marginRight: 6 }} />
+              Telegram Linked Successfully
+            </div>
+            <p className="telegram-desc-text">
+              Your account is successfully paired with the bot. You are set to receive real-time goal scores, lock warnings, and payout details!
+            </p>
+            {participant.telegram_user && (
+              <div className="telegram-meta-row">
+                <span className="meta-label">Username: </span>
+                <span className="meta-value">@{participant.telegram_user}</span>
+              </div>
+            )}
+            
+            <div className="telegram-btn-row">
+              <button 
+                onClick={handleSendTestMessage}
+                disabled={sendingTest}
+                className="btn-telegram-test"
+              >
+                <Send size={13} style={{ marginRight: 6 }} />
+                {sendingTest ? 'Sending...' : 'Send Test Alert'}
+              </button>
+              <button 
+                onClick={handleUnlinkTelegram}
+                disabled={unlinking}
+                className="btn-telegram-unlink"
+              >
+                <Trash2 size={13} style={{ marginRight: 6 }} />
+                {unlinking ? 'Unlinking...' : 'Unlink Bot'}
+              </button>
+            </div>
+            
+            {testSuccess && <p className="profile-inline-success" style={{ marginTop: 12 }}><Check size={14} /> Test message sent! Check your Telegram app.</p>}
+            {testError && <p className="profile-inline-error" style={{ marginTop: 12 }}>{testError}</p>}
+          </div>
+        ) : (
+          <div className="telegram-unlinked-container">
+            <p className="telegram-desc-text">
+              Receive instant alerts for live goals, deadline warnings (1 hour before match locking), and prediction stake resolutions directly in Telegram!
+            </p>
+            
+            <div className="telegram-pairing-instructions">
+              <div className="pairing-step">
+                <span className="step-num">1</span>
+                <span>Click the button below to open `@WC2026_El_casino_bot` in Telegram.</span>
+              </div>
+              <div className="pairing-step">
+                <span className="step-num">2</span>
+                <span>Press the <b>Start</b> button at the bottom of the chat to securely pair your wallet!</span>
+              </div>
+            </div>
+
+            <a 
+              href={"https://t.me/WC2026_El_casino_bot?start=" + participant.id}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="btn-telegram-link"
+            >
+              🤖 Pair Telegram Bot
+            </a>
+          </div>
+        )}
       </section>
 
       {/* ── Change PIN ── */}
