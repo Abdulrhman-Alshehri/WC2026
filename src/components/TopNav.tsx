@@ -56,7 +56,11 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
         <button className="topnav-user" onClick={onLogout} title="Switch player">
           <span className="topnav-user-name">{participant.display_name || participant.name}</span>
           <span className="topnav-user-avatar">
-            {participant.name.charAt(0).toUpperCase()}
+            {participant.photo_url ? (
+              <img src={participant.photo_url} alt={participant.name} />
+            ) : (
+              participant.name.charAt(0).toUpperCase()
+            )}
           </span>
         </button>
       </div>
