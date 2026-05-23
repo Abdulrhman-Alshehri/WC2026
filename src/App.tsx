@@ -10,6 +10,8 @@ import Leaderboard from './components/Leaderboard';
 import PredictionHistory from './components/PredictionHistory';
 import PredictionModal from './components/PredictionModal';
 import ConfirmModal from './components/ConfirmModal';
+import TransitionOverlay from './components/TransitionOverlay';
+import { usePageTransition } from './hooks/usePageTransition';
 
 function App() {
   const queryClient = useQueryClient();
@@ -22,6 +24,12 @@ function App() {
   });
 
   const [currentPage, setCurrentPage] = useState('dashboard');
+  
+  const { videoRef, isActive, navigateWithTransition, handleVideoEnded } = usePageTransition({
+    currentPage,
+    onCommitPage: setCurrentPage,
+  });
+
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
@@ -142,8 +150,8 @@ function App() {
   }, []);
 
   const handleNavigate = useCallback((page: string) => {
-    setCurrentPage(page);
-  }, []);
+    navigateWithTransition(page);
+  }, [navigateWithTransition]);
 
   const handleOpenPredict = useCallback((match: Match) => {
     setPredictingMatch(match);
@@ -322,6 +330,11 @@ function App() {
 
   return (
     <div className="app">
+      <TransitionOverlay
+        isActive={isActive}
+        onEnded={handleVideoEnded}
+        videoRef={videoRef}
+      />
       <TopNav
         participant={currentUser}
         balance={balance}

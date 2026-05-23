@@ -22,7 +22,6 @@ export default function TransitionOverlay({ isActive, onEnded, videoRef }: Trans
         controls={false}
         {...{ 'webkit-playsinline': 'true' }}
       >
-        <source src="/assets/transition.webm" type="video/webm" />
         <source src="/assets/transition.mp4" type="video/mp4" />
       </video>
     </div>

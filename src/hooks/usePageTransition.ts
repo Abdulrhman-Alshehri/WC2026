@@ -15,7 +15,7 @@ interface UsePageTransitionResult {
   handleVideoEnded: () => void;
 }
 
-const START_GRACE_MS = 120;
+const START_GRACE_MS = 500;
 const MAX_TIMEOUT_MS = 2200;
 const DURATION_BUFFER_MS = 300;
 
