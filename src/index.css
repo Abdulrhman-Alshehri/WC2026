@@ -199,8 +199,9 @@ body::after{content:'';position:fixed;width:500px;height:500px;top:50%;left:50%;
 .podium-card.bronze{order:2;border-color:rgba(255,158,129,0.4)}
 .podium-card.podium-you{background:rgba(255,255,255,0.7)}
 .podium-medal{font-size:1.5rem}
-.podium-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:bold;color:#ffffff}
-.podium-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.podium-avatar{position:relative;width:48px;height:48px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:bold;color:#ffffff;flex-shrink:0}
+.podium-avatar-letter{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1}
+.podium-avatar img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover;z-index:2}
 .podium-name{font-size:.85rem;font-weight:bold;color:var(--text)}
 .podium-balance{font-size:.8rem;color:var(--accent)}
 .podium-delta{font-size:.7rem}
@@ -282,7 +283,7 @@ body::after{content:'';position:fixed;width:500px;height:500px;top:50%;left:50%;
 .identity-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
 .podium{flex-wrap:wrap;justify-content:center}
 .podium-card{min-width:100px;padding:12px}
-.podium-card.gold{order:0;width:100%;flex-direction:row;gap:12px;transform:none;justify-content:center}
+.podium-card.gold{order:0;flex:0 0 100%;width:100%;flex-direction:row;gap:12px;transform:none;top:0;justify-content:center}
 .podium-card.silver{order:1;flex:1}
 .podium-card.bronze{order:2;flex:1}
 .history-stats{flex-wrap:wrap}
@@ -604,7 +605,8 @@ body::after { background: radial-gradient(circle,rgba(140,230,200,0.18) 0%,trans
 .match-finished { opacity: 1; background: rgba(255,255,255,.45); }
 
 .podium { gap: 16px; }
-.podium-card.gold { border-color: rgba(235,255,68,.45); background: rgba(235,255,68,.06); position: relative; top: -8px; }
+.podium-card.gold { border-color: rgba(235,255,68,.45); background: rgba(235,255,68,.06); position: relative; }
+@media (min-width: 641px) { .podium-card.gold { top: -8px; } }
 .podium-card.gold .podium-avatar { width: 60px; height: 60px; }
 .podium-card.gold .podium-name { font-size: 1rem; }
 .leaderboard-list { gap: 8px; }
