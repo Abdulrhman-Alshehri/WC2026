@@ -1,5 +1,6 @@
 import { Participant } from '../types';
 import { formatCoins } from '../lib/data';
+import { Coins } from 'lucide-react';
 
 interface Props {
   participant: Participant;
@@ -29,7 +30,7 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
       <div className="topnav-right">
         <div className="balance-chip-container">
           <div className="balance-chip">
-            <span className="balance-icon">??</span>
+            <Coins size={16} className="balance-icon" />
             <span className="balance-amount">{formatCoins(balance)}</span>
           </div>
           {inPlay > 0 && <div className="in-play-badge">{formatCoins(inPlay)} in play</div>}

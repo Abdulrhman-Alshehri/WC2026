@@ -1,5 +1,6 @@
 import { Match, Prediction } from '../types';
 import { getFlagEmoji, getMatchStatusLabel, isPredictionWindowOpen, isKnockoutStage } from '../lib/data';
+import { Lock } from 'lucide-react';
 
 interface Props {
   match: Match;
@@ -81,7 +82,7 @@ export default function MatchCard({ match, prediction, onPredict, onCancelPredic
         ) : windowOpen ? (
           <button className="btn-predict" onClick={() => onPredict(match)}>{knockout ? 'Predict Winner' : 'Make Prediction'}</button>
         ) : !isFinished ? (
-          <div className="prediction-locked"><span className="lock-icon">??</span><span>No prediction made</span></div>
+          <div className="prediction-locked"><Lock size={14} className="lock-icon" /><span>No prediction made</span></div>
         ) : (
           <div className="prediction-missed"><span>No prediction</span></div>
         )}
