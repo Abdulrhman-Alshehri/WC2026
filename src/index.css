@@ -199,7 +199,7 @@ body::after{content:'';position:fixed;width:500px;height:500px;top:50%;left:50%;
 .podium-card.bronze{border-color:rgba(255,158,129,0.4)}
 .podium-card.podium-you{background:rgba(255,255,255,0.7)}
 .podium-medal{font-size:1.5rem}
-.podium-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:bold;color:#ffffff}
+.podium-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:bold;color:#ffffff}
 .podium-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 .podium-name{font-size:.85rem;font-weight:bold;color:var(--text)}
 .podium-balance{font-size:.8rem;color:var(--accent)}
@@ -209,7 +209,7 @@ body::after{content:'';position:fixed;width:500px;height:500px;top:50%;left:50%;
 .leaderboard-row:hover{background:rgba(255,255,255,0.7)}
 .leaderboard-you{border-color:rgba(91,110,245,0.3);background:rgba(91,110,245,0.05)}
 .lb-rank{width:28px;font-weight:bold;color:var(--text2);text-align:center}
-.lb-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:bold;color:#ffffff;flex-shrink:0}
+.lb-avatar{width:36px;height:36px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:bold;color:#ffffff;flex-shrink:0}
 .lb-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 .lb-name{flex:1;font-size:.9rem;display:flex;align-items:center;gap:6px;color:var(--text)}
 .lb-you-tag{font-size:.6rem;background:var(--accent);color:#ffffff;padding:1px 6px;border-radius:4px;font-weight:bold}
