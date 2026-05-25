@@ -26,12 +26,16 @@ function validateAvatarFile(file: File): string | null {
 
 function classifyUploadError(uploadError: any): string {
   const rawMessage = String(uploadError?.message || '').toLowerCase();
+  const rawStatus = String(uploadError?.statusCode || uploadError?.status || '');
+  const rawCode = String(uploadError?.code || '');
+  const detail = String(uploadError?.message || uploadError?.error || 'Unknown storage error');
+  const reference = [rawCode, rawStatus].filter(Boolean).join('/') || 'N/A';
 
   if (
     rawMessage.includes('bucket not found') ||
     rawMessage.includes('bucket')
   ) {
-    return 'Avatar upload failed: storage bucket is missing or misconfigured. Please configure the avatars bucket.';
+    return `Avatar upload failed because the Supabase storage bucket "avatars" was not found. Ask your admin to create the "avatars" bucket (public) and allow uploads. Details: ${detail} (Ref: ${reference})`;
   }
 
   if (
@@ -40,7 +44,7 @@ function classifyUploadError(uploadError: any): string {
     rawMessage.includes('not authorized') ||
     rawMessage.includes('forbidden')
   ) {
-    return 'Avatar upload failed: storage permissions are blocked. Please check storage policies.';
+    return `Avatar upload failed because storage permissions blocked this upload (RLS/policy). Ask your admin to allow uploads to the "avatars" bucket for your app role. Details: ${detail} (Ref: ${reference})`;
   }
 
   if (
@@ -49,10 +53,10 @@ function classifyUploadError(uploadError: any): string {
     rawMessage.includes('timeout') ||
     rawMessage.includes('failed to fetch')
   ) {
-    return 'Avatar upload failed due to a network issue. Please check your connection and try again.';
+    return `Avatar upload failed due to a network/connectivity issue. Please check your connection and try again. Details: ${detail} (Ref: ${reference})`;
   }
 
-  return 'Avatar upload failed. Please try again.';
+  return `Avatar upload failed due to a storage error. Details: ${detail} (Ref: ${reference})`;
 }
 
 function classifyInsertError(insertError: any): string {
@@ -223,6 +227,7 @@ export default function AddUserModal({ isOpen, participants, onClose, onCreated 
       .upload(filePath, avatarFile, { upsert: true });
 
     if (uploadError) {
+      console.error('[AddUserModal] Avatar upload failed:', uploadError);
       setError(classifyUploadError(uploadError));
       setSaving(false);
       return;
