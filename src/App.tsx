@@ -283,6 +283,8 @@ function App() {
             stake: stake,
             home_team: matchObj.home_team,
             away_team: matchObj.away_team,
+            home_team_code: matchObj.home_team_code ?? null,
+            away_team_code: matchObj.away_team_code ?? null,
             prediction: prediction,
             balance: data.new_balance
           }
@@ -340,6 +342,8 @@ function App() {
             match_id: matchId,
             home_team: matchObj.home_team,
             away_team: matchObj.away_team,
+            home_team_code: matchObj.home_team_code ?? null,
+            away_team_code: matchObj.away_team_code ?? null,
             old_prediction: oldPrediction,
             new_prediction: prediction,
             old_stake: oldStake,

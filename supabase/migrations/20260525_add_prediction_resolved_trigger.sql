@@ -67,17 +67,19 @@ BEGIN
                      'event',   'prediction_resolved',
                      'chat_id', pred.telegram_chat_id,
                      'data',    jsonb_build_object(
-                       'match_id',   NEW.id,
-                       'home_team',  NEW.home_team,
-                       'away_team',  NEW.away_team,
-                       'home_score', NEW.home_score,
-                       'away_score', NEW.away_score,
-                       'prediction', pred.prediction,
-                       'status',     pred.status,
-                       'stake',      pred.stake,
-                       'payout',     COALESCE(pred.payout, 0),
-                       'profit',     GREATEST(COALESCE(pred.payout, 0) - pred.stake, 0),
-                       'balance',    pred.balance
+                       'match_id',        NEW.id,
+                       'home_team',       NEW.home_team,
+                       'away_team',       NEW.away_team,
+                       'home_team_code',  NEW.home_team_code,
+                       'away_team_code',  NEW.away_team_code,
+                       'home_score',      NEW.home_score,
+                       'away_score',      NEW.away_score,
+                       'prediction',      pred.prediction,
+                       'status',          pred.status,
+                       'stake',           pred.stake,
+                       'payout',          COALESCE(pred.payout, 0),
+                       'profit',          GREATEST(COALESCE(pred.payout, 0) - pred.stake, 0),
+                       'balance',         pred.balance
                      )
                    )
       );
