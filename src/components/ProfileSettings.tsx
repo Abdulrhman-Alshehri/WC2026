@@ -63,14 +63,15 @@ function classifyFileValidationError(file: File): ProfileUiError | null {
 function classifyStorageUploadError(uploadError: any): ProfileUiError {
   const rawMessage = String(uploadError?.message || '').toLowerCase();
   const technicalCode = buildTechnicalCode(uploadError, 'UPLOAD_FAILED');
+  const statusCode = uploadError?.statusCode || uploadError?.status;
 
   if (
     rawMessage.includes('row level security') ||
     rawMessage.includes('permission') ||
     rawMessage.includes('not authorized') ||
     rawMessage.includes('forbidden') ||
-    uploadError?.statusCode === 401 ||
-    uploadError?.statusCode === 403
+    statusCode === 401 ||
+    statusCode === 403
   ) {
     return {
       title: 'Upload permission blocked',
@@ -108,7 +109,7 @@ function classifyStorageUploadError(uploadError: any): ProfileUiError {
 
   if (
     rawMessage.includes('payload too large') ||
-    uploadError?.statusCode === 413
+    statusCode === 413
   ) {
     return {
       title: 'Image is too large',
