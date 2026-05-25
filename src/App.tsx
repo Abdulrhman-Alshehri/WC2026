@@ -27,7 +27,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [previousPage, setPreviousPage] = useState('dashboard');
   
-  const { videoRef, isActive, navigateWithTransition, handleVideoEnded, playOnce } = usePageTransition({
+  const { videoRef, isActive, isFastActive, navigateWithTransition, handleVideoEnded, playOnce } = usePageTransition({
     currentPage,
     onCommitPage: setCurrentPage,
   });
@@ -419,6 +419,7 @@ function App() {
     <>
       <TransitionOverlay
         isActive={isActive}
+        isFastActive={isFastActive}
         onEnded={handleVideoEnded}
         videoRef={videoRef}
       />

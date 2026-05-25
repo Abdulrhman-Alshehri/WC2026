@@ -10,6 +10,7 @@ interface UsePageTransitionArgs {
 
 interface UsePageTransitionResult {
   isActive: boolean;
+  isFastActive: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   navigateWithTransition: (targetPage: string) => void;
   handleVideoEnded: () => void;
@@ -25,9 +26,16 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
   const pendingPageRef = useRef<string | null>(null);
   const pendingCallbackRef = useRef<(() => void) | null>(null);
   const phaseRef = useRef<TransitionPhase>('idle');
+  
   const [isActive, setIsActive] = useState(false);
+  const [isFastActive, setIsFastActive] = useState(false);
+
   const startGuardRef = useRef<number | null>(null);
   const hardTimeoutRef = useRef<number | null>(null);
+  const fastTimer1Ref = useRef<number | null>(null);
+  const fastTimer2Ref = useRef<number | null>(null);
+
+  const lastTransitionTimeRef = useRef<number>(0);
   const unmountedRef = useRef(false);
 
   const clearTimers = useCallback(() => {
@@ -38,6 +46,14 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
     if (hardTimeoutRef.current !== null) {
       window.clearTimeout(hardTimeoutRef.current);
       hardTimeoutRef.current = null;
+    }
+    if (fastTimer1Ref.current !== null) {
+      window.clearTimeout(fastTimer1Ref.current);
+      fastTimer1Ref.current = null;
+    }
+    if (fastTimer2Ref.current !== null) {
+      window.clearTimeout(fastTimer2Ref.current);
+      fastTimer2Ref.current = null;
     }
   }, []);
 
@@ -73,6 +89,7 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
       video.currentTime = 0;
     }
 
+    lastTransitionTimeRef.current = Date.now();
     phaseRef.current = 'idle';
   }, [clearTimers, onCommitPage]);
 
@@ -124,6 +141,36 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
       return;
     }
 
+    const now = Date.now();
+    const timeSinceLastTransition = now - lastTransitionTimeRef.current;
+
+    if (timeSinceLastTransition < 10000) {
+      // Option B Snappy Path: Cooldown Active (< 10 seconds since last transition)
+      phaseRef.current = 'exiting';
+      setIsFastActive(true);
+
+      // Step 1: Wait 100ms for the glassmorphic overlay to fade in/blur
+      fastTimer1Ref.current = window.setTimeout(() => {
+        if (unmountedRef.current) return;
+
+        // Step 2: Swap the page DOM
+        flushSync(() => {
+          onCommitPage(targetPage);
+        });
+
+        // Step 3: Wait another 100ms to fade out the overlay and reset state
+        fastTimer2Ref.current = window.setTimeout(() => {
+          if (unmountedRef.current) return;
+          setIsFastActive(false);
+          phaseRef.current = 'idle';
+          lastTransitionTimeRef.current = Date.now(); // Reset cooldown window
+        }, 100);
+      }, 100);
+
+      return;
+    }
+
+    // Standard Path: Cooldown Expired (>= 10 seconds)
     pendingPageRef.current = targetPage;
     phaseRef.current = 'exiting';
     setIsActive(true);
@@ -175,6 +222,7 @@ export function usePageTransition({ currentPage, onCommitPage }: UsePageTransiti
 
   return {
     isActive,
+    isFastActive,
     videoRef,
     navigateWithTransition,
     handleVideoEnded,
