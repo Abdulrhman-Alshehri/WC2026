@@ -77,14 +77,17 @@ function formatCoins(amount: number | string): string {
   return isNaN(num) ? String(amount) : new Intl.NumberFormat('en-US').format(num);
 }
 
-// Helper to log notifications to the public.notifications_log table
+// Helper to log notifications to the public.notifications_log table.
+// messageText stores the rendered Telegram message so retry-notifications
+// can re-send it directly without re-rendering.
 async function logNotification(
   supabase: any,
   type: string,
   matchId: string | null,
   payload: any,
   status: 'SENT' | 'FAILED',
-  errorText: string | null = null
+  errorText: string | null = null,
+  messageText: string | null = null
 ) {
   try {
     const { error } = await supabase
@@ -96,6 +99,7 @@ async function logNotification(
         sent_at: new Date().toISOString(),
         status: status,
         error: errorText,
+        message_text: messageText,
       });
     if (error) {
       console.error('Failed to write to notifications_log:', error);
@@ -223,7 +227,7 @@ Deno.serve(async (req) => {
         const status = sendResult.success ? 'SENT' : 'FAILED';
         const errorText = sendResult.error || null;
         
-        await logNotification(supabase, notificationType, matchId, body, status, errorText);
+        await logNotification(supabase, notificationType, matchId, body, status, errorText, text);
       }
 
       return new Response(JSON.stringify({ success: true, message: "Notification processed successfully" }), {
@@ -325,7 +329,7 @@ Deno.serve(async (req) => {
         const status = sendResult.success ? 'SENT' : 'FAILED';
         const errorText = sendResult.error || null;
         
-        await logNotification(supabase, 'TELEGRAM_WELCOME', null, { participant_id: participantId, username: cleanUsername, chat_id: chatId }, status, errorText);
+        await logNotification(supabase, 'TELEGRAM_WELCOME', null, { participant_id: participantId, username: cleanUsername, chat_id: chatId }, status, errorText, welcomeText);
         console.log(`Successfully paired Chat ID ${chatId} with Participant: ${displayName}`);
 
       } else {
