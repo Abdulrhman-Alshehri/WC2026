@@ -1,6 +1,6 @@
 import { LeaderboardEntry } from '../types';
-import { formatCoins, getAvatarColor } from '../lib/data';
-import { TrendingDown, TrendingUp, Trophy, Coins } from 'lucide-react';
+import { getAvatarColor } from '../lib/data';
+import { TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 
 interface Props {
   entries: LeaderboardEntry[];
@@ -29,7 +29,6 @@ export default function Leaderboard({ entries, currentParticipantId }: Props) {
                 {entry.photo_url && <img src={entry.photo_url} alt={entry.name} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
               </div>
               <span className="podium-name">{entry.display_name || entry.name}</span>
-              <span className="podium-balance"><Coins size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{formatCoins(entry.balance)}</span>
               {entry.delta !== undefined && entry.delta !== 0 && (
                 <span className={`podium-delta ${entry.delta > 0 ? 'delta-up' : 'delta-down'}`}>
                   {entry.delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -56,7 +55,6 @@ export default function Leaderboard({ entries, currentParticipantId }: Props) {
                 <span className="lb-name-sub">Rank movement: {entry.delta ?? 0}</span>
                 {isYou && <span className="lb-you-tag">YOU</span>}
               </span>
-              <span className="lb-balance"><Coins size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{formatCoins(entry.balance)}</span>
               {entry.delta !== undefined && entry.delta !== 0 && (
                 <span className={`lb-delta ${entry.delta > 0 ? 'delta-up' : 'delta-down'}`}>
                   {entry.delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
