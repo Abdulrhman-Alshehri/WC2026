@@ -347,7 +347,7 @@ function App() {
             balance: data.new_balance,
           },
         },
-      });
+      }).catch(err => console.error("[App.tsx] Failed to trigger Telegram prediction_updated notification:", err));
     }
   }, [currentUser, matches, predictions, queryClient]);
 

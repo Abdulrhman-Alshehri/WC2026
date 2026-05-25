@@ -53,6 +53,14 @@ async function sendTelegramMessage(
   }
 }
 
+// Escape Telegram MarkdownV1 special characters inside dynamic strings.
+// Only needed for content rendered inside *bold* or _italic_ markers.
+// Backtick-wrapped values (numbers, prediction choices) are already safe.
+function escMd(s: string | null | undefined): string {
+  if (!s) return '';
+  return String(s).replace(/([_*`\[])/g, '\\$1');
+}
+
 // Helper to format coin balances with commas (e.g. 1,250,000)
 function formatCoins(amount: number | string): string {
   if (typeof amount === 'string') {
@@ -154,7 +162,7 @@ Deno.serve(async (req) => {
         const balanceFormatted = formatCoins(data.balance);
         text = `🎯 *Prediction Placed!* ⚽\n\n` +
           `You successfully staked *${stakeFormatted} Coins* on the match:\n` +
-          `🆚 *${data.home_team} vs ${data.away_team}*\n` +
+          `🆚 *${escMd(data.home_team)} vs ${escMd(data.away_team)}*\n` +
           `📝 *Your Choice:* \`${data.prediction}\`\n\n` +
           `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\`\n\n` +
           `Good luck! 🏆`;
@@ -163,7 +171,7 @@ Deno.serve(async (req) => {
         const stakeFormatted = formatCoins(data.stake);
         const balanceFormatted = formatCoins(data.balance);
         text = `❌ *Prediction Cancelled!*\n\n` +
-          `Your prediction on *${data.home_team} vs ${data.away_team}* has been cancelled.\n` +
+          `Your prediction on *${escMd(data.home_team)} vs ${escMd(data.away_team)}* has been cancelled.\n` +
           `💰 *Stake Refunded:* \`+${stakeFormatted} Coins\`\n\n` +
           `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
       } else if (event === 'prediction_updated') {
@@ -181,7 +189,7 @@ Deno.serve(async (req) => {
         }
 
         text = `✏️ *Prediction Updated!* ⚽\n\n` +
-          `🆚 *${data.home_team} vs ${data.away_team}*\n\n` +
+          `🆚 *${escMd(data.home_team)} vs ${escMd(data.away_team)}*\n\n` +
           diffLines + `\n` +
           `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
       } else if (event === 'prediction_resolved') {
@@ -194,7 +202,7 @@ Deno.serve(async (req) => {
           const payoutFormatted = formatCoins(data.payout);
           const profitFormatted = formatCoins(data.profit);
           text = `🎉 *Staking Win! Payout Processed!* 💰\n\n` +
-            `Match *${data.home_team} vs ${data.away_team}* is resolved.\n` +
+            `Match *${escMd(data.home_team)} vs ${escMd(data.away_team)}* is resolved.\n` +
             `🏁 *Result:* \`${data.home_score} - ${data.away_score}\`\n\n` +
             `📈 *Prediction:* \`${data.prediction}\` (WON)\n` +
             `💸 *Staked:* \`${stakeFormatted} Coins\`\n` +
@@ -202,7 +210,7 @@ Deno.serve(async (req) => {
             `💎 *New Liquid Balance:* \`${balanceFormatted} Coins\``;
         } else {
           text = `💔 *Prediction Settled*\n\n` +
-            `Match *${data.home_team} vs ${data.away_team}* is resolved.\n` +
+            `Match *${escMd(data.home_team)} vs ${escMd(data.away_team)}* is resolved.\n` +
             `🏁 *Result:* \`${data.home_score} - ${data.away_score}\`\n\n` +
             `📈 *Prediction:* \`${data.prediction}\` (LOST)\n` +
             `💸 *Staked:* \`${stakeFormatted} Coins\` (Lost)\n\n` +
@@ -304,7 +312,7 @@ Deno.serve(async (req) => {
         const displayName = participant.display_name || participant.name;
 
         // Send successful pairing confirmation welcome message
-        const welcomeText = `⚽ *Welcome to FWC 2026 Predictions, ${displayName}!* 🏆\n\n` +
+        const welcomeText = `⚽ *Welcome to FWC 2026 Predictions, ${escMd(displayName)}!* 🏆\n\n` +
           `Your Telegram account is now *successfully linked* to your prediction wallet! 🤝\n\n` +
           `You will receive real-time updates directly in this chat:\n` +
           `🔔 *Live match events* (kickoffs, goals)\n` +
