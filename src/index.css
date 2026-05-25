@@ -1049,8 +1049,8 @@ body::after { background: radial-gradient(circle,rgba(140,230,200,0.18) 0%,trans
   --border: rgba(255, 255, 255, 0.1);
 
   --text: oklch(94% 0.006 258);
-  --text2: oklch(70% 0.01 258 / 0.7);
-  --text3: oklch(55% 0.008 258 / 0.5);
+  --text2: oklch(72% 0.008 258);
+  --text3: oklch(58% 0.006 258);
 
   --glass-bg: rgba(18, 20, 32, 0.6);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1253,4 +1253,96 @@ body,
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* ─── DARK MODE CONTRAST FIXES ─────────────────────────────── */
+/* The UI refresh block uses hardcoded rgba(20,25,50,X) colors.
+   On dark backgrounds those produce near-black text. Override each. */
+
+/* Stat labels: PREDICTIONS, WINS, NET PROFIT, TOTAL, WON, LOST, PENDING */
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .detail-label {
+  color: oklch(68% 0.008 258);
+}
+
+/* Stat values: near-white default; functional variants keep their color */
+[data-theme="dark"] .stat-value {
+  color: oklch(92% 0.006 258);
+}
+[data-theme="dark"] .stat-won .stat-value { color: var(--green); }
+[data-theme="dark"] .stat-lost .stat-value { color: var(--red); }
+[data-theme="dark"] .stat-pending .stat-value { color: var(--orange); }
+[data-theme="dark"] .stat-net .stat-value { color: var(--accent); }
+[data-theme="dark"] .hero-stat-wins .stat-value { color: var(--green); }
+[data-theme="dark"] .hero-stat-net .stat-value { color: var(--accent); }
+
+/* Inactive nav links */
+[data-theme="dark"] .topnav-link {
+  color: oklch(70% 0.008 258);
+}
+
+/* Inactive sub-tabs (Group Stage, Knockout Rounds) */
+[data-theme="dark"] .dashboard-tab {
+  color: oklch(68% 0.008 258);
+}
+
+/* In-play label next to balance chip */
+[data-theme="dark"] .in-play-label {
+  color: oklch(65% 0.008 258);
+  opacity: 1;
+}
+
+/* "Kickoff in" countdown label */
+[data-theme="dark"] .countdown-label {
+  color: oklch(78% 0.04 258);
+}
+
+/* Leaderboard rank numbers */
+[data-theme="dark"] .lb-rank {
+  color: oklch(62% 0.008 258);
+}
+
+/* Rank movement sub-label under names */
+[data-theme="dark"] .lb-name-sub {
+  color: oklch(58% 0.008 258);
+}
+
+/* Balance amounts — near-white is more readable than accent in dark */
+[data-theme="dark"] .lb-balance {
+  color: oklch(90% 0.006 258);
+}
+
+/* Podium player names */
+[data-theme="dark"] .podium-name {
+  color: oklch(92% 0.006 258);
+}
+
+/* "Live rankings updated..." subtitle */
+[data-theme="dark"] .leaderboard-subtitle,
+[data-theme="dark"] .history-subtitle {
+  color: oklch(65% 0.008 258);
+}
+
+/* Empty state and loading state card text */
+[data-theme="dark"] .history-empty,
+[data-theme="dark"] .state-card {
+  color: oklch(65% 0.008 258);
+}
+[data-theme="dark"] .state-card-large h3 {
+  color: oklch(92% 0.006 258);
+}
+
+/* Telegram prefix wrapper: inner input must be transparent to avoid
+   double dark background stacking on the wrapper */
+[data-theme="dark"] .profile-input-prefix-wrap .profile-input {
+  background: transparent;
+}
+[data-theme="dark"] .identity-add-prefix-wrap .identity-add-input {
+  background: transparent;
+}
+
+/* Telegram @ prefix icon and add-modal prefix */
+[data-theme="dark"] .profile-telegram-prefix,
+[data-theme="dark"] .identity-add-prefix {
+  color: oklch(60% 0.008 258);
 }
