@@ -4,7 +4,9 @@
       "mcp__Desktop_Commander__list_directory",
       "mcp__Desktop_Commander__read_file",
       "Bash(wc -l \"D:/WC26/src/components/\"*.tsx)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(git -C \"D:/WC26\" status)",
+      "Bash(git -C \"D:/WC26\" remote -v)"
     ]
   }
 }

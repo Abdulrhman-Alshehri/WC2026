@@ -1,6 +1,7 @@
 import { Participant } from '../types';
 import { formatCoins } from '../lib/data';
-import { Coins, Activity, Trophy, History } from 'lucide-react';
+import { Coins, Activity, Trophy, History, Sun, Moon } from 'lucide-react';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 interface Props {
   participant: Participant;
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export default function TopNav({ participant, balance, inPlay, onNavigate, currentPage, onOpenProfile }: Props) {
+  const [isDark, toggleTheme] = useDarkMode();
+
   return (
     <>
     <header className="topnav">
@@ -36,6 +39,14 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
             {inPlay > 0 && <span className="in-play-label">{formatCoins(inPlay)} in play</span>}
           </div>
         </div>
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
         <button className="topnav-user" onClick={onOpenProfile} title="Profile settings">
           <span className="topnav-user-name">{participant.display_name || participant.name}</span>
           <span className="topnav-user-avatar">
