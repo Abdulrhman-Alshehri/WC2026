@@ -140,6 +140,32 @@ function App() {
     };
   }, [queryClient, currentUser]);
 
+  // Sync currentUser.telegram_chat_id from the participants query whenever it refreshes.
+  // localStorage can be stale (e.g. user paired Telegram after the last login), so we
+  // propagate any telegram_chat_id change from the live server data into currentUser.
+  useEffect(() => {
+    if (!currentUser) return;
+    const fresh = participants.find(p => p.id === currentUser.id);
+    if (!fresh || fresh.telegram_chat_id === currentUser.telegram_chat_id) return;
+    const updated = { ...currentUser, telegram_chat_id: fresh.telegram_chat_id, telegram_user: fresh.telegram_user };
+    setCurrentUser(updated);
+    localStorage.setItem('wc2026_user', JSON.stringify(updated));
+  // currentUser.id is stable; participants changes when the query refetches
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participants, currentUser?.id]);
+
+  // When the user returns to this tab (e.g. after pairing Telegram in the external app),
+  // invalidate the participants cache so the sync above picks up the new telegram_chat_id.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        queryClient.invalidateQueries({ queryKey: ['participants'] });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [queryClient]);
+
 
   const handleSelectIdentity = useCallback((participant: Participant) => {
     playOnce(() => {

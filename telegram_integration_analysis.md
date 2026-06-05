@@ -1015,6 +1015,106 @@ The `resolve_match_predictions` function is idempotent — if `matches.resolved`
 
 ---
 
+## 19. Debugging History
+
+### 2026-06-05 — Notifications Not Sent After Placing / Cancelling Prediction
+
+#### Symptom
+Telegram notifications were completely silent for `prediction_placed`, `prediction_updated`, and `prediction_cancelled` events, even for participants with a paired Telegram account.
+
+#### First Fix Attempt (Insufficient)
+The initial investigation identified that `telegram_chat_id` was missing from the Supabase `select` queries:
+- `src/App.tsx` participants query (line 54)
+- `src/components/AddUserModal.tsx` insert return query
+
+Both were updated to include `telegram_chat_id`. This was necessary but **not sufficient** — the bug persisted.
+
+#### Root Cause (True Fix)
+The core problem was **`currentUser` never being refreshed from live server data after Telegram pairing**.
+
+The notification guard in every prediction handler is:
+```typescript
+if (currentUser.telegram_chat_id && matchObj) {
+```
+
+`currentUser` is initialised from `localStorage` at app start (`App.tsx:19-25`) and only updated via two code paths:
+1. `handleSelectIdentity` — requires the user to log out and back in
+2. `ProfileSettings.onProfileUpdated` — only fires when the user explicitly saves profile settings
+
+**The pairing flow has no hook into either path.** When a user clicks "Pair Telegram Bot", they leave to the external Telegram app. The bot updates `participants.telegram_chat_id` in the database. But when the user returns to the web app:
+- `currentUser.telegram_chat_id` is still `null` / `undefined` (from localStorage)
+- The `participants` React Query has a **1-hour `staleTime`** — it will not refetch unless invalidated
+- Even if the query re-ran, nothing propagated its result into `currentUser`
+
+Result: the guard always evaluated `false` → no notification sent.
+
+#### Fix Applied (`src/App.tsx`)
+
+Two `useEffect`s were added after the realtime subscription effect (lines 143–167):
+
+**1. Sync effect** — propagates `telegram_chat_id` (and `telegram_user`) from the `participants` query into `currentUser` whenever the query data changes:
+```typescript
+useEffect(() => {
+  if (!currentUser) return;
+  const fresh = participants.find(p => p.id === currentUser.id);
+  if (!fresh || fresh.telegram_chat_id === currentUser.telegram_chat_id) return;
+  const updated = { ...currentUser, telegram_chat_id: fresh.telegram_chat_id, telegram_user: fresh.telegram_user };
+  setCurrentUser(updated);
+  localStorage.setItem('wc2026_user', JSON.stringify(updated));
+}, [participants, currentUser?.id]);
+```
+
+**2. `visibilitychange` effect** — when the browser tab regains focus (the exact moment a user returns from Telegram), invalidates the `participants` query so the sync effect has fresh data:
+```typescript
+useEffect(() => {
+  const handleVisibility = () => {
+    if (!document.hidden) {
+      queryClient.invalidateQueries({ queryKey: ['participants'] });
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibility);
+  return () => document.removeEventListener('visibilitychange', handleVisibility);
+}, [queryClient]);
+```
+
+#### Full Pairing-to-Notification Flow (After Fix)
+
+```
+User clicks "Pair Telegram Bot" in ProfileSettings
+    │ Tab goes to background (visibilitychange: hidden)
+    ▼
+User presses Start in Telegram
+    │ DB: participants.telegram_chat_id = "<chatId>"
+    ▼
+User switches back to web app tab
+    │ visibilitychange fires (document.hidden = false)
+    │ queryClient.invalidateQueries(['participants'])
+    │ participants query refetches
+    ▼
+participants data changes (now includes telegram_chat_id)
+    │ sync useEffect runs
+    │ fresh.telegram_chat_id !== currentUser.telegram_chat_id → true
+    │ setCurrentUser({ ...currentUser, telegram_chat_id })
+    │ localStorage.setItem('wc2026_user', ...)
+    ▼
+User places prediction
+    │ currentUser.telegram_chat_id is now truthy
+    │ guard passes → supabase.functions.invoke('telegram-webhook', ...)
+    ▼
+Telegram notification delivered ✓
+```
+
+#### Runtime Gotchas Discovered
+
+| Gotcha | Detail |
+|--------|--------|
+| **localStorage staleness** | `currentUser` in React state is only as fresh as the last login or profile save. Any field added to the DB schema after a user's last login will be `undefined` in their session until a re-sync. |
+| **React Query staleTime** | The `participants` query has `staleTime: 1000 * 60 * 60` (1 hour). During that window, the query won't re-run on its own — cache will show stale `telegram_chat_id: null`. The `visibilitychange` invalidation bypasses this. |
+| **No feedback loop** | The notification send is fire-and-forget (`.catch()` only). A failing notification produces no visible error for the user. Check `notifications_log` table for `status = 'FAILED'` entries to diagnose delivery failures. |
+| **DB update ≠ state update** | The Telegram pairing happens in the Edge Function (DB write), not in the React app. The React app has no subscription or hook watching `participants.telegram_chat_id` changes. |
+
+---
+
 ## 18. Quick Reference: Code Locations
 
 ### Core Files
