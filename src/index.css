@@ -357,7 +357,7 @@ body::after{content:'';position:fixed;width:500px;height:500px;top:50%;left:50%;
   gap:3px;
   border:none;
   background:none;
-  color:rgba(20,25,50,.45);
+  color:var(--text2);
   font-family:var(--font-body);
   font-size:.62rem;
   letter-spacing:.5px;
