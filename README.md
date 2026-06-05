@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="images/logo_banner.png" alt="WC2026 X El Casino" width="600" />
-</p>
+
 
 <h1 align="center">⚽ WC2026 Prediction Pool — "El Casino"</h1>
 
