@@ -51,7 +51,7 @@ function App() {
   const { data: participants = DEMO_PARTICIPANTS } = useQuery({
     queryKey: ['participants'],
     queryFn: async () => {
-      const { data } = await supabase.from('participants').select('id, name, display_name, photo_url, telegram_user, pin, is_active, created_at').eq('is_active', true).order('name');
+      const { data } = await supabase.from('participants').select('id, name, display_name, photo_url, telegram_user, telegram_chat_id, pin, is_active, created_at').eq('is_active', true).order('name');
       return (data as Participant[]) || [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour

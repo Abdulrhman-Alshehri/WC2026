@@ -250,7 +250,7 @@ export default function AddUserModal({ isOpen, participants, onClose, onCreated 
         pin,
         is_active: true,
       })
-      .select('id, name, display_name, photo_url, telegram_user, pin, is_active, created_at')
+      .select('id, name, display_name, photo_url, telegram_user, telegram_chat_id, pin, is_active, created_at')
       .single();
 
     if (insertError || !data) {
