@@ -14,11 +14,26 @@ interface Props {
 export default function PredictionModal({ match, availableBalance, existingPrediction, onSubmit, onEdit, onClose }: Props) {
   const knockout = isKnockoutStage(match.stage);
   const [selected, setSelected] = useState<string | null>(existingPrediction?.prediction || null);
-  const [stake, setStake] = useState<number>(existingPrediction?.stake || Math.min(100000, availableBalance));
+  const [stakeInput, setStakeInput] = useState<string>(
+    String(existingPrediction?.stake || Math.min(100000, availableBalance))
+  );
   const [confirming, setConfirming] = useState(false);
 
   const minStake = 1000;
   const maxStake = availableBalance + (existingPrediction?.stake || 0);
+
+  // Parse stake from the free-form input string
+  const parsedStake = parseInt(stakeInput.replace(/[^0-9]/g, ''), 10) || 0;
+
+  const stakeError =
+    stakeInput !== '' && parsedStake < minStake
+      ? `Minimum stake is ${formatCoins(minStake)} coins`
+      : parsedStake > maxStake
+      ? `Cannot exceed available balance of ${formatCoins(maxStake)} coins`
+      : null;
+
+  // Clamp slider position to valid range even if input is out of bounds
+  const sliderValue = Math.min(Math.max(parsedStake, minStake), maxStake);
 
   const options = knockout
     ? [
@@ -32,8 +47,8 @@ export default function PredictionModal({ match, availableBalance, existingPredi
       ];
 
   const handleConfirm = () => {
-    console.log("[PredictionModal] Confirm Prediction clicked. State:", { selected, stake, minStake, maxStake, availableBalance, existingPrediction });
-    if (!selected || stake < minStake || stake > maxStake) {
+    console.log("[PredictionModal] Confirm Prediction clicked. State:", { selected, parsedStake, minStake, maxStake, availableBalance, existingPrediction });
+    if (!selected || parsedStake < minStake || parsedStake > maxStake) {
       console.warn("[PredictionModal] Confirm aborted due to validation failure.");
       return;
     }
@@ -41,9 +56,9 @@ export default function PredictionModal({ match, availableBalance, existingPredi
     setTimeout(() => {
       console.log("[PredictionModal] Confirming timeout finished. Submitting to app level...");
       if (existingPrediction) {
-        onEdit(match.id, existingPrediction.id, selected, stake);
+        onEdit(match.id, existingPrediction.id, selected, parsedStake);
       } else {
-        onSubmit(match.id, selected, stake);
+        onSubmit(match.id, selected, parsedStake);
       }
       setConfirming(false);
     }, 600);
@@ -132,31 +147,29 @@ export default function PredictionModal({ match, availableBalance, existingPredi
             min={minStake}
             max={maxStake}
             step={1000}
-            value={stake}
-            onChange={(e) => setStake(Number(e.target.value))}
+            value={sliderValue}
+            onChange={(e) => setStakeInput(e.target.value)}
             className="stake-slider"
           />
           <div className="stake-display">
             <input
               type="number"
-              value={stake}
-              min={minStake}
-              max={maxStake}
-              step={1000}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                if (val >= minStake && val <= maxStake) setStake(val);
-              }}
-              className="stake-input"
+              value={stakeInput}
+              min={0}
+              onChange={(e) => setStakeInput(e.target.value)}
+              className={`stake-input${stakeError ? ' stake-input-error' : ''}`}
             />
             <span className="stake-coins">coins</span>
           </div>
+          {stakeError && (
+            <p className="stake-error-msg">{stakeError}</p>
+          )}
           <div className="stake-presets">
             {[10, 25, 50, 100].map((pct) => (
               <button
                 key={pct}
                 className="stake-preset"
-                onClick={() => setStake(Math.max(minStake, Math.floor(maxStake * pct / 100 / 1000) * 1000))}
+                onClick={() => setStakeInput(String(Math.max(minStake, Math.floor(maxStake * pct / 100 / 1000) * 1000)))}
               >
                 {pct}%
               </button>
@@ -165,18 +178,18 @@ export default function PredictionModal({ match, availableBalance, existingPredi
         </div>
 
         <div className="modal-summary">
-          {selected && (
+          {selected && !stakeError && parsedStake >= minStake && (
             <p>
               Predicting <strong>
                 {options.find(o => o.value === selected)?.label}
-              </strong>. Staking <strong>{formatCoins(stake)}</strong> coins.
+              </strong>. Staking <strong>{formatCoins(parsedStake)}</strong> coins.
             </p>
           )}
         </div>
 
         <button
           className={`btn-confirm ${confirming ? 'confirming' : ''}`}
-          disabled={!selected || stake < minStake || stake > maxStake || confirming}
+          disabled={!selected || !!stakeError || parsedStake < minStake || parsedStake > maxStake || confirming}
           onClick={handleConfirm}
         >
           {confirming ? 'Locking Prediction...' : existingPrediction ? 'Update Prediction' : 'Confirm Prediction'}

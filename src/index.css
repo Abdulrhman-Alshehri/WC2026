@@ -211,6 +211,8 @@ body::after{content:'';position:fixed;width:500px;height:500px;top:50%;left:50%;
 .stake-display{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .stake-input{flex:1;background:rgba(255,255,255,0.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:var(--glass-border);color:var(--text);padding:8px 12px;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:1rem;box-shadow:var(--glass-inner)}
 .stake-coins{color:var(--text2);font-size:.85rem}
+.stake-input-error{border-color:rgba(255,80,80,0.7) !important;box-shadow:0 0 0 2px rgba(255,80,80,0.15) !important}
+.stake-error-msg{color:#ff6b6b;font-size:.78rem;margin:-4px 0 8px 0;padding:0}
 .stake-presets{display:flex;gap:6px}
 .stake-preset{background:rgba(255,255,255,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:var(--glass-border);color:var(--text2);padding:4px 12px;border-radius:12px;cursor:pointer;font-size:.75rem;font-family:var(--font-body);transition:all .2s;box-shadow:var(--glass-inner);min-height:44px}
 .stake-preset:hover{border-color:rgba(91,110,245,0.4);color:var(--accent)}
