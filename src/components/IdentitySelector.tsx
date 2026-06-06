@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Participant } from '../types';
 import { getAvatarColor } from '../lib/data';
@@ -26,20 +25,7 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
   const [highlightedUserId, setHighlightedUserId] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const confirmRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const carouselRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  const scrollLeft = () => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: -300, behavior: 'smooth' });
-    }
-  };
-
-  const scrollRight = () => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-    }
-  };
 
   useEffect(() => {
     if (step === 'pin-entry' || step === 'pin-setup') {
@@ -58,7 +44,7 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
     const card = cardRefs.current[highlightedUserId];
     if (!card) return;
 
-    card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const timeout = window.setTimeout(() => {
       setHighlightedUserId(null);
     }, 6000);
@@ -198,34 +184,26 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
             <p className="identity-subtitle">PREDICTION POOL</p>
             <p className="identity-desc">Select your identity to start predicting</p>
           </div>
-          <div className="carousel-wrapper">
-            <button className="carousel-btn left" onClick={scrollLeft}>
-              <ChevronLeft size={24} />
-            </button>
-            <div className="identity-carousel" ref={carouselRef}>
-              {participants.map((p) => {
-                const color = getAvatarColor(p.name);
-                return (
-                  <button
-                    key={p.id}
-                    ref={(el) => {
-                      cardRefs.current[p.id] = el;
-                    }}
-                    className={`identity-card ${highlightedUserId === p.id ? 'identity-card-highlighted' : ''}`}
-                    onClick={() => handleCardClick(p)}
-                  >
-                    <div className="identity-avatar" style={{ background: color }}>
-                      {p.photo_url ? <img src={p.photo_url} alt={p.name} /> : <span>{p.name.charAt(0).toUpperCase()}</span>}
-                    </div>
-                    <span className="identity-name">{p.display_name || p.name}</span>
-                    <span className="identity-cta">Play as {p.display_name || p.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <button className="carousel-btn right" onClick={scrollRight}>
-              <ChevronRight size={24} />
-            </button>
+          <div className="identity-grid">
+            {participants.map((p) => {
+              const color = getAvatarColor(p.name);
+              return (
+                <button
+                  key={p.id}
+                  ref={(el) => {
+                    cardRefs.current[p.id] = el;
+                  }}
+                  className={`identity-card ${highlightedUserId === p.id ? 'identity-card-highlighted' : ''}`}
+                  onClick={() => handleCardClick(p)}
+                >
+                  <div className="identity-avatar" style={{ background: color }}>
+                    {p.photo_url ? <img src={p.photo_url} alt={p.name} /> : <span>{p.name.charAt(0).toUpperCase()}</span>}
+                  </div>
+                  <span className="identity-name">{p.display_name || p.name}</span>
+                  <span className="identity-cta">Play as {p.display_name || p.name}</span>
+                </button>
+              );
+            })}
           </div>
           <div className="identity-add-row">
             <button
