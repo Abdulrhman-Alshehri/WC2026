@@ -1360,14 +1360,32 @@ body,
 }
 
 @media (max-width: 640px) {
+  /* Anchor the chat between the fixed top nav (60px) and bottom tab bar
+     (56px + safe area) with position:fixed. This sidesteps every vh/dvh
+     measurement quirk and guarantees the feed has a real, bounded height. */
   .elcasino-chat-wrapper {
-    /* Fit between the fixed top nav (~70px) and the bottom tab bar (56px + safe area) */
-    height: calc(100dvh - 70px - 56px - env(safe-area-inset-bottom, 0px) - 16px);
+    position: fixed;
+    top: 60px;
+    left: 8px;
+    right: 8px;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    height: auto;
     min-height: 0;
+    z-index: 5;
+    border-radius: 12px;
+    /* backdrop-filter + overflow:hidden + radius breaks -webkit-overflow-scrolling
+       on iOS, so drop the blur on mobile and use a solid panel instead. */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(15, 23, 42, 0.94);
+  }
+  .elcasino-chat-feed {
+    padding: 16px;
   }
 }
 
 .elcasino-chat-header {
+  flex: 0 0 auto;
   padding: 16px 24px;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -1377,11 +1395,13 @@ body,
 }
 
 .elcasino-chat-feed {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-y;          /* explicitly allow vertical touch scrolling */
+  transform: translateZ(0);     /* own compositor layer: fixes iOS scroll-stuck cases */
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -1492,6 +1512,7 @@ body,
 
 /* Base Form Control Elements */
 .elcasino-chat-input-bar {
+  flex: 0 0 auto;
   padding: 16px 24px;
   background: rgba(15, 23, 42, 0.6);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
