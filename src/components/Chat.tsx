@@ -3,6 +3,23 @@ import { Participant, ChatMessage, ChatReactionAggregate } from '../types';
 import { supabase } from '../lib/supabase';
 import { Send, MoreVertical, Loader2, MessageSquare, Edit2, Trash2, X, Check } from 'lucide-react';
 
+interface ChatMessageDbRow {
+  id: string;
+  participant_id: string;
+  message: string;
+  is_edited: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ChatReactionDbRow {
+  id: string;
+  message_id: string;
+  participant_id: string;
+  emoji: string;
+  created_at: string;
+}
+
 interface Props {
   currentParticipantId: string;
   participants: Participant[];
@@ -120,7 +137,9 @@ export default function ChatHub({ currentParticipantId, participants }: Props) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_messages' },
         (payload) => {
-          const { eventType, new: newRow, old: oldRow } = payload;
+          const eventType = payload.eventType;
+          const newRow = payload.new as ChatMessageDbRow;
+          const oldRow = payload.old as ChatMessageDbRow;
 
           if (eventType === 'INSERT') {
             const profile = participantMap.get(newRow.participant_id);
@@ -172,7 +191,9 @@ export default function ChatHub({ currentParticipantId, participants }: Props) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_reactions' },
         (payload) => {
-          const { eventType, new: newReact, old: oldReact } = payload;
+          const eventType = payload.eventType;
+          const newReact = payload.new as ChatReactionDbRow;
+          const oldReact = payload.old as ChatReactionDbRow;
 
           if (eventType === 'INSERT') {
             setMessages((prev) =>
