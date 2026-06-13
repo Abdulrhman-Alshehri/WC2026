@@ -17,16 +17,12 @@ interface PredictionWithParticipant extends Prediction {
   };
 }
 
-// Deterministic seed reaction counts based on prediction ID
-function getSeedReactions(predictionId: string): Record<string, number> {
-  let hash = 0;
-  for (let i = 0; i < predictionId.length; i++) {
-    hash = predictionId.charCodeAt(i) + ((hash << 5) - hash);
-  }
+// Seed reaction counts initialized to zero
+function getSeedReactions(): Record<string, number> {
   return {
-    '👍': Math.abs((hash >> 2) % 6),
-    '❤️': Math.abs((hash >> 6) % 5),
-    '😂': Math.abs((hash >> 10) % 8),
+    '👍': 0,
+    '❤️': 0,
+    '😂': 0,
   };
 }
 
@@ -153,7 +149,7 @@ export default function PredictionsViewerModal({ match, onClose }: Props) {
               {predictions.map((pred) => {
                 const displayName = pred.participants?.display_name || pred.participants?.name || 'Unknown User';
                 const hasAvatar = !!pred.participants?.photo_url;
-                const seed = getSeedReactions(pred.id);
+                const seed = getSeedReactions();
                 const localUserReacts = myReactions[pred.id] || [];
 
                 // Format outcome labels & styling
