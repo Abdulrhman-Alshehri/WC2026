@@ -745,6 +745,7 @@ body::after { background: radial-gradient(circle,rgba(140,230,200,0.18) 0%,trans
 
 .hero-countdown-details {
   flex: 1;
+  min-width: 0;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -769,11 +770,11 @@ body::after { background: radial-gradient(circle,rgba(140,230,200,0.18) 0%,trans
 }
 
 .hero-flag-container.home {
-  animation: float-slow 6s ease-in-out infinite;
+  animation: none;
 }
 
 .hero-flag-container.away {
-  animation: float-slow-delayed 6s ease-in-out infinite;
+  animation: none;
 }
 
 .hero-flag-container:hover {
@@ -821,27 +822,54 @@ body::after { background: radial-gradient(circle,rgba(140,230,200,0.18) 0%,trans
 }
 
 @media (max-width: 580px) {
+  .hero-countdown-wrapper {
+    display: grid;
+    grid-template-columns: minmax(52px, 64px) minmax(0, 1fr) minmax(52px, 64px);
+    align-items: center;
+    gap: 8px;
+  }
   .hero-flag-container {
-    flex: 0 0 76px;
-    width: 76px;
-    height: 76px;
+    width: 64px;
+    height: 64px;
+    justify-self: center;
     padding: 8px;
   }
-  .hero-countdown-wrapper {
-    gap: 12px;
+  .hero-flag-container:hover {
+    transform: none;
+  }
+  .hero-flag-container:hover .hero-flag-img {
+    transform: none;
+  }
+  .hero-countdown-details {
+    width: 100%;
+    min-width: 0;
+  }
+  .hero-match-preview {
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: clamp(1.35rem, 6vw, 1.9rem);
+    line-height: 1.05;
   }
 }
 
 @media (max-width: 440px) {
+  .hero-countdown-wrapper {
+    grid-template-columns: 52px minmax(0, 1fr) 52px;
+    gap: 6px;
+  }
   .hero-flag-container {
-    flex: 0 0 60px;
-    width: 60px;
-    height: 60px;
+    width: 52px;
+    height: 52px;
     padding: 6px;
     border-radius: var(--radius-sm);
   }
-  .hero-countdown-wrapper {
-    gap: 8px;
+  .hero-match-preview {
+    font-size: clamp(1.2rem, 6vw, 1.55rem);
+  }
+  .countdown-segment {
+    min-width: 40px;
+    padding: 6px;
   }
 }
 
