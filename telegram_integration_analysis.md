@@ -32,7 +32,7 @@
 The Telegram integration is a **bidirectional notification bridge** between the WC2026 Prediction Pool web application and a private Telegram bot. It serves two purposes:
 
 1. **Inbound:** Handles Telegram bot commands (`/start`, `/start <UUID>`) to pair a participant's Telegram account with their pool identity.
-2. **Outbound:** Sends real-time alerts to paired participants when prediction events occur (placed, updated, cancelled, resolved).
+2. **Outbound:** Sends real-time alerts to paired participants — prediction events (placed, updated, cancelled, resolved), ⏰ deadline reminders (2h before lockout), 📉/📈 rank-change alerts, and 🏆 full leaderboard broadcasts after each match.
 
 ### Key Design Decisions
 
@@ -97,6 +97,8 @@ The Telegram integration is a **bidirectional notification bridge** between the 
 |-----------|-----------|------|
 | **Telegram Webhook Edge Function** | `supabase/functions/telegram-webhook/index.ts` (368 lines) | Core handler: processes both inbound bot commands and outbound notification events |
 | **Retry Notifications Edge Function** | `supabase/functions/retry-notifications/index.ts` (114 lines) | Re-sends `FAILED` notifications from the last 2 hours (max 3 retries each) |
+| **Deadline Reminders Edge Function** | `supabase/functions/deadline-reminders/index.ts` | Runs every 5 min via pg_cron; reminds paired users ~2h before `prediction_close` if they haven't predicted (deduped) |
+| **Leaderboard View / Snapshots** | `public.leaderboard_view`, `public.leaderboard_snapshots` | Blinded-balance ranking + per-settlement snapshots used for rank-change deltas and leaderboard broadcasts |
 | **Match Resolution DB Trigger** | `supabase/migrations/20260525_add_prediction_resolved_trigger.sql` (100 lines) | PostgreSQL trigger that fires `prediction_resolved` notifications via `pg_net` when a match is resolved |
 | **Match Resolution DB Function** | `supabase/migrations/20260526_add_resolve_match_predictions.sql` (129 lines) | The payout function that sets `matches.resolved = true`, which fires the trigger above |
 | **Frontend: Prediction Handlers** | `src/App.tsx` (lines 274–408) | Invokes `telegram-webhook` for `prediction_placed`, `prediction_updated`, `prediction_cancelled` events |
@@ -190,14 +192,17 @@ The Telegram integration is a **bidirectional notification bridge** between the 
 Your Telegram account is now *successfully linked* to your prediction wallet! 🤝
 
 You will receive real-time updates directly in this chat:
-🔔 *Live match events* (kickoffs, goals)
-⚠️ *Prediction deadline reminders* (1 hour before lockout)
+⏰ *Deadline reminders* (2 hours before lockout)
+🎯 *Prediction confirmations* (placed, updated, cancelled)
 💰 *Staking results* & payout summaries
+📊 *Rank changes* & live leaderboard updates
 
 💎 *Current Balance:* `{formattedBalance} Coins`
 
 Good luck with your predictions! ⚽🔥
 ```
+
+> The welcome message previously promised "Live match events (kickoffs, goals)" and "deadline reminders (1 hour before lockout)" — the former was never implemented and the latter is now 2 hours. The copy above reflects what the system actually sends. A `⚽ Open App` button is attached when `APP_BASE_URL` is configured.
 
 ### Pairing Error Handling
 
@@ -469,6 +474,157 @@ Edge Function renders message and sends to Telegram Bot API
 
 ---
 
+### 6.6. `deadline_reminder`
+
+| Property | Value |
+|----------|-------|
+| **Trigger Source** | **`deadline-reminders` Edge Function** (pg_cron, every 5 min) — NOT the frontend |
+| **Log Type** | `TELEGRAM_DEADLINE_REMINDER` |
+| **Purpose** | Nudge paired participants who have **not** placed a prediction, ~2h before `prediction_close` |
+
+**Selection logic** (`deadline-reminders/index.ts`): finds `matches` with `status = 'NS'` whose `prediction_close` falls in `[now+1h55m, now+2h5m]`, then for each match pings every active participant with a `telegram_chat_id` who has **no** prediction on that match **and** has not already been reminded (dedup via `notifications_log` on `type + match_id + participant_id`). It POSTs a `deadline_reminder` event to `telegram-webhook` so rendering/logging stay centralized.
+
+**Payload shape sent to Edge Function:**
+```json
+{
+  "event": "deadline_reminder",
+  "chat_id": "123456789",
+  "data": {
+    "participant_id": "uuid-of-participant",
+    "match_id": "uuid-of-match",
+    "home_team": "Qatar",
+    "away_team": "Switzerland",
+    "home_team_code": "QAT",
+    "away_team_code": "SUI",
+    "stage": "Group Stage",
+    "group_name": "Group B",
+    "prediction_close": "2026-06-13T17:00:00Z",
+    "balance": 845000
+  }
+}
+```
+
+**Rendered message template:**
+```
+⏰ *Prediction Deadline: 2 Hours Left!*
+
+🆚 *Qatar 🇶🇦 vs 🇨🇭 Switzerland*
+🏆 Group Stage · Group B
+🔒 *Locks:* Sat 13 Jun, 20:00 AST (in 1h 58m)
+
+You haven't placed a prediction yet!
+💰 *Current Balance:* `845,000 Coins`
+[ 🎯 Place Prediction ]  [ ⚽ View All Matches ]
+```
+
+Times are formatted in **Arabia Standard Time (UTC+3)** with a relative `in Xh Ym` suffix (see §8). Buttons render only when `APP_BASE_URL` is set.
+
+---
+
+### 6.7. `rank_change`
+
+| Property | Value |
+|----------|-------|
+| **Trigger Source** | **PostgreSQL trigger** `notify_predictions_resolved()` after a match settles |
+| **Log Type** | `TELEGRAM_RANK_CHANGE` |
+| **Purpose** | Alert a participant who moved **≥ 2 ranks** (up or down) on the leaderboard |
+
+**How the delta is computed:** the trigger diffs the **two most recent `leaderboard_snapshots`** (the snapshot for the just-settled match vs. the previous one — a baseline snapshot is seeded so the first resolution has something to diff against). For each paired participant with `abs(new_rank − old_rank) >= 2`, it sends one alert with their settled result(s) on this match.
+
+**Payload shape sent to Edge Function:**
+```json
+{
+  "event": "rank_change",
+  "chat_id": "123456789",
+  "data": {
+    "participant_id": "uuid-of-participant",
+    "match_id": "uuid-of-match",
+    "direction": "DOWN",
+    "old_rank": 3,
+    "new_rank": 5,
+    "balance": 620000,
+    "results": [
+      { "home_team": "Brazil", "away_team": "Japan", "status": "LOST", "stake": 50000, "payout": 0 }
+    ]
+  }
+}
+```
+
+**Rendered message — DROP variant:**
+```
+📉 *Rank Drop Alert!*
+
+⚠️ You moved from *#3 → #5* (▼2)
+
+Recent results:
+• Brazil vs Japan: ❌ Lost `50,000 Coins`
+
+Current Rank: *#5*
+💎 *Balance:* `620,000 Coins`
+[ 🏆 Leaderboard ]  [ ⚽ Next Matches ]
+```
+
+**Rendered message — GAIN variant:**
+```
+📈 *Rank Gain!* 🎉
+
+✨ You moved from *#8 → #5* (▲3)
+
+Recent results:
+• USA vs Paraguay: ✅ Won `+31,837 Coins`
+
+Current Rank: *#5*
+💎 *Balance:* `871,837 Coins`
+[ 🏆 Leaderboard ]  [ ⚽ Next Matches ]
+```
+
+The `results` array may be empty if the participant moved purely due to *other* players' outcomes; the "Recent results" block is then omitted.
+
+---
+
+### 6.8. `leaderboard_broadcast`
+
+| Property | Value |
+|----------|-------|
+| **Trigger Source** | **PostgreSQL trigger** `notify_predictions_resolved()` — one per paired participant after each settlement |
+| **Log Type** | `TELEGRAM_LEADERBOARD` |
+| **Purpose** | Push the full standings to every paired user after each match resolves |
+
+**Server-side rendering:** to keep the trigger payload tiny, the trigger sends only `chat_id`, `participant_id`, and the match score. The `telegram-webhook` function then queries `public.leaderboard_view` itself, renders the top 10 with medals, highlights the recipient, and appends a "You: #N" line if the recipient sits outside the top 10.
+
+**Payload shape sent to Edge Function:**
+```json
+{
+  "event": "leaderboard_broadcast",
+  "chat_id": "123456789",
+  "data": {
+    "participant_id": "uuid-of-participant",
+    "match_id": "uuid-of-match",
+    "home_team": "United States",
+    "away_team": "Paraguay",
+    "home_score": 4,
+    "away_score": 1
+  }
+}
+```
+
+**Rendered message template:**
+```
+🏆 *FWC 2026 Leaderboard*
+_Updated after United States 4–1 Paraguay_
+
+🥇 Thamer — `1,033,333`
+🥈 Ali — `980,000`
+🥉 Sara — `955,000`
+*4.* Omar — `871,837` 👈 *You*
+...
+[ 🏆 Open Leaderboard ]
+```
+
+> ⚠️ **Volume note:** this broadcasts to *every* paired participant after *every* match. On a busy matchday that is a lot of messages per user. If it becomes noisy, gate the broadcast to once per matchday or only when the top-N changes.
+
+---
+
 ## 7. Notification Trigger Sources
 
 ### Summary Table
@@ -479,8 +635,11 @@ Edge Function renders message and sends to Telegram Bot API
 | `prediction_placed` | Frontend (after RPC success) | `App.tsx:277` | `supabase.functions.invoke()` |
 | `prediction_updated` | Frontend (after RPC success) | `App.tsx:337` | `supabase.functions.invoke()` |
 | `prediction_cancelled` | Frontend (after RPC success) | `App.tsx:396` | `supabase.functions.invoke()` |
-| `prediction_resolved` | PostgreSQL trigger | `20260525...trigger.sql:60` | `net.http_post()` |
-| *(retry)* | pg_cron job | `retry-notifications/index.ts:56` | Direct `fetch()` to Telegram API |
+| `prediction_resolved` | PostgreSQL trigger | `notify_predictions_resolved()` | `net.http_post()` |
+| `deadline_reminder` | `deadline-reminders` edge fn (pg_cron `*/5 * * * *`) | `deadline-reminders/index.ts` | `fetch()` → telegram-webhook |
+| `rank_change` | PostgreSQL trigger | `notify_predictions_resolved()` | `net.http_post()` |
+| `leaderboard_broadcast` | PostgreSQL trigger | `notify_predictions_resolved()` | `net.http_post()` |
+| *(retry)* | pg_cron job | `retry-notifications/index.ts` | Direct `fetch()` to Telegram API |
 
 ### Frontend vs Database Trigger — Design Rationale
 
@@ -533,6 +692,26 @@ function formatCoins(amount: number | string): string {
 - Number → formatted
 - NaN → returned as string
 
+### Prediction Labels & Flags
+
+`labelPrediction()` converts the raw outcome enum into a human-readable, flag-prefixed label using a `FLAG_MAP` of football-data.org TLA codes → flag emoji:
+
+- `HOME_WIN` / `HOME_ADVANCE` → `{homeFlag} {homeTeam}` (e.g. `🇨🇭 Switzerland`)
+- `AWAY_WIN` / `AWAY_ADVANCE` → `{awayFlag} {awayTeam}`
+- `DRAW` → `🤝 Draw`
+- anything else → returned verbatim (fallback)
+
+`getFlag(code)` returns the flag emoji for a TLA code, or `''` if unknown.
+
+### Time Formatting (deadline reminders)
+
+- `formatAst(iso)` → e.g. `Sat 13 Jun, 20:00 AST`, using `Intl.DateTimeFormat` with `timeZone: 'Asia/Riyadh'` (UTC+3, no DST).
+- `relTime(iso)` → relative suffix like `in 1h 58m` / `in 45m` / `now`.
+
+### Inline Action Buttons
+
+`buildKeyboard([{ text, path? }])` builds a Telegram `inline_keyboard`. Each button is a URL button pointing at `APP_BASE_URL + (path ?? '')`. If `APP_BASE_URL` is unset, it returns `undefined` and the message is sent **without** buttons (graceful degradation). `APP_BASE_URL` defaults to `https://worldcup2026elcasino.netlify.app` and can be overridden with `supabase secrets set APP_BASE_URL=...`. `sendTelegramMessage()` accepts an optional `replyMarkup` and also sets `disable_web_page_preview: true`.
+
 ---
 
 ## 9. Notification Logging (`notifications_log`)
@@ -544,6 +723,7 @@ function formatCoins(amount: number | string): string {
 | `id` | `uuid` (PK) | Auto-generated | Unique identifier |
 | `type` | `text` | Set by Edge Function | e.g., `TELEGRAM_PREDICTION_PLACED`, `TELEGRAM_WELCOME` |
 | `match_id` | `uuid` | From event payload | Associated match (null for test/welcome) |
+| `participant_id` | `uuid` | From `data.participant_id` | Recipient participant — powers deadline-reminder dedup & per-user ops filtering (added 2026-06-13) |
 | `payload` | `jsonb` | Full request body | Complete event data for debugging |
 | `sent_at` | `timestamptz` | `new Date().toISOString()` | When the send was attempted |
 | `status` | `text` | `'SENT'` or `'FAILED'` | Delivery result |
@@ -578,6 +758,9 @@ async function logNotification(
 | `TELEGRAM_PREDICTION_UPDATED` | Prediction modified |
 | `TELEGRAM_PREDICTION_CANCELLED` | Prediction cancelled and refunded |
 | `TELEGRAM_PREDICTION_RESOLVED` | Match resolved — win or loss |
+| `TELEGRAM_DEADLINE_REMINDER` | 2h-before-lockout nudge to non-predictors |
+| `TELEGRAM_RANK_CHANGE` | Participant moved ≥ 2 ranks after settlement |
+| `TELEGRAM_LEADERBOARD` | Full leaderboard broadcast after a match |
 | `TELEGRAM_WELCOME` | Successful pairing welcome message |
 
 ---
@@ -663,6 +846,14 @@ CREATE TRIGGER on_match_resolved
 --   AND participant has telegram_chat_id
 -- → Calls net.http_post() to telegram-webhook Edge Function
 ```
+
+**As of 2026-06-13 the trigger does three things per settlement** (all guarded by the same `resolved false → true` condition and the Vault service-role key):
+
+1. **`prediction_resolved`** — one per settled WON/LOST prediction with a paired account (original behavior).
+2. **`rank_change`** — diffs the two most recent `leaderboard_snapshots` and sends an alert to each paired participant who moved ≥ 2 ranks, including their settled result(s) on this match. See §6.7.
+3. **`leaderboard_broadcast`** — sends the full standings to every active paired participant. See §6.8.
+
+> The current snapshot is written by `resolve_match_predictions()` **before** it flips `matches.resolved = true`, so by the time this AFTER-UPDATE trigger fires the latest snapshot already reflects the just-settled match. The previous snapshot (or the seeded baseline) is the diff target.
 
 ### Data Passed to Edge Function
 
@@ -957,6 +1148,7 @@ notify_predictions_resolved() function
 | Variable | Required By | Source | Description |
 |----------|------------|--------|-------------|
 | `TELEGRAM_BOT_TOKEN` | telegram-webhook, retry-notifications | `supabase secrets set` | Telegram Bot API token |
+| `APP_BASE_URL` | telegram-webhook | `supabase secrets set` (optional) | Public web-app URL for inline buttons. Defaults to `https://worldcup2026elcasino.netlify.app`; buttons are omitted only if blanked |
 | `SUPABASE_URL` | All Edge Functions | Auto-injected by Supabase | Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | All Edge Functions | Auto-injected by Supabase | Service role key for DB access |
 
@@ -983,8 +1175,8 @@ SELECT vault.create_secret('your-service-role-key', 'service_role_key');
 ### 1. No Group Chat Notifications
 The current system only sends **individual DM notifications** to paired participants. There is no group chat notification feature (e.g., posting standings to a shared group after each match).
 
-### 2. No Deadline Reminder Notifications
-The PRD specifies deadline reminders 1 hour before kickoff, but these are **NOT implemented**. The `notifications_log` table has a `type` field that could support `DEADLINE_REMINDER`, but no code creates these entries.
+### 2. Deadline Reminders — IMPLEMENTED ✅ (2026-06-13)
+Deadline reminders now fire ~2 hours before `prediction_close` for paired users who haven't predicted, via the `deadline-reminders` edge function (pg_cron `*/5 * * * *`). Logged as `TELEGRAM_DEADLINE_REMINDER` and deduped per `(match_id, participant_id)`. See §6.6. *(Remaining gap: no goal/kickoff "live match event" alerts — that part of the original PRD is still unimplemented.)*
 
 ### 3. No Daily Digest
 The PRD mentions an optional daily digest at 08:00 AM. This is **NOT implemented**.
@@ -1016,6 +1208,23 @@ The `resolve_match_predictions` function is idempotent — if `matches.resolved`
 ---
 
 ## 19. Debugging History
+
+### 2026-06-13 — Added Deadline Reminders, Rank Alerts & Leaderboard Broadcast
+
+Three new notification types were added (see §6.6–6.8):
+
+- **`deadline_reminder`** — new `deadline-reminders` edge function + pg_cron job (`*/5 * * * *`, jobid 4). Reminds paired non-predictors ~2h before `prediction_close`.
+- **`rank_change`** — `notify_predictions_resolved()` now diffs the two latest `leaderboard_snapshots` and alerts users who move ≥ 2 ranks.
+- **`leaderboard_broadcast`** — full standings pushed to every paired user after each settlement, rendered server-side from `leaderboard_view`.
+
+Supporting changes:
+
+- Added `notifications_log.participant_id` (+ index `notifications_log_dedup_idx`) for per-user dedup/ops.
+- Made `leaderboard_snapshots.match_id` nullable and **seeded one baseline snapshot** so the first post-deploy resolution has a diff target.
+- Added `APP_BASE_URL`-driven inline action buttons, `labelPrediction()`/`FLAG_MAP`, and AST time formatting (`formatAst`/`relTime`).
+- Corrected the welcome message copy (removed the never-implemented "live match events" promise; deadline reminder is 2h, not 1h).
+
+Deployed: `telegram-webhook` v13 (`verify_jwt: false`), `deadline-reminders` v1 (`verify_jwt: true`), migration `add_rank_alerts_and_reminders`.
 
 ### 2026-06-05 — Notifications Not Sent After Placing / Cancelling Prediction
 
@@ -1129,7 +1338,9 @@ Telegram notification delivered ✓
 | Event router (body.event check) | Same file | 140-237 |
 | Bot command handler (/start) | Same file | 239-353 |
 | Retry Edge Function | `supabase/functions/retry-notifications/index.ts` | All (114 lines) |
-| DB trigger function | `supabase/migrations/20260525_add_prediction_resolved_trigger.sql` | 17-91 |
+| Deadline Reminders Edge Function | `supabase/functions/deadline-reminders/index.ts` | All |
+| DB trigger function (original) | `supabase/migrations/20260525_add_prediction_resolved_trigger.sql` | 17-91 |
+| DB trigger function (extended: rank + leaderboard) | `supabase/migrations/20260613_add_rank_alerts_and_reminders.sql` | All |
 | DB trigger definition | Same file | 94-99 |
 | Resolution RPC (calls trigger) | `supabase/migrations/20260526_add_resolve_match_predictions.sql` | 18-128 |
 
@@ -1150,6 +1361,8 @@ Telegram notification delivered ✓
 | What | Table / Object | Key Columns |
 |------|----------------|-------------|
 | User pairing data | `participants` | `telegram_chat_id`, `telegram_user` |
-| Notification log | `notifications_log` | `type`, `status`, `message_text`, `retry_count`, `error` |
+| Notification log | `notifications_log` | `type`, `status`, `message_text`, `retry_count`, `error`, `participant_id` |
+| Leaderboard ranking (blinded) | `leaderboard_view` | `participant_id`, `blinded_balance`, `rank` |
+| Per-settlement standings snapshots | `leaderboard_snapshots` | `match_id` (nullable), `snapshot` (jsonb), `created_at` |
 | Match resolution trigger | `on_match_resolved` trigger on `matches` | Fires when `resolved` flips to `true` |
 | Vault secret | `vault.decrypted_secrets` | `name = 'service_role_key'` |
