@@ -13,6 +13,7 @@ import ConfirmModal from './components/ConfirmModal';
 import TransitionOverlay from './components/TransitionOverlay';
 import ProfileSettings from './components/ProfileSettings';
 import { usePageTransition } from './hooks/usePageTransition';
+import ChatHub from './components/Chat';
 
 function App() {
   const queryClient = useQueryClient();
@@ -540,6 +541,9 @@ function App() {
             matches={matchMap}
             onNavigateToDashboard={() => handleNavigate('dashboard')}
           />
+        )}
+        {currentPage === 'chat' && (
+          <ChatHub currentParticipantId={currentUser.id} participants={participants} />
         )}
         {currentPage === 'profile' && (
           <ProfileSettings

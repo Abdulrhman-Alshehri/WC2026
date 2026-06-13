@@ -73,3 +73,28 @@ export interface LeaderboardEntry {
   rank: number;
   delta?: number;
 }
+
+export interface ChatParticipantInfo {
+  name: string;
+  display_name: string | null;
+  photo_url: string | null;
+}
+
+export interface ChatReactionAggregate {
+  emoji: string;
+  count: number;
+  meReacted: boolean;
+  participantIds: string[];
+}
+
+export interface ChatMessage {
+  id: string;
+  participant_id: string;
+  message: string;
+  is_edited: boolean;
+  created_at: string;
+  updated_at: string;
+  participants?: ChatParticipantInfo;
+  reactions: ChatReactionAggregate[];
+}
+

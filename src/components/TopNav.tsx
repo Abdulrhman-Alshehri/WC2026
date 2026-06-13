@@ -1,6 +1,6 @@
 import { Participant } from '../types';
 import { formatCoins } from '../lib/data';
-import { Coins, Activity, Trophy, History, Sun, Moon } from 'lucide-react';
+import { Coins, Activity, Trophy, History, Sun, Moon, MessageSquare } from 'lucide-react';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 interface Props {
@@ -29,6 +29,7 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
         <button className={`topnav-link ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => onNavigate('dashboard')}>Matches</button>
         <button className={`topnav-link ${currentPage === 'leaderboard' ? 'active' : ''}`} onClick={() => onNavigate('leaderboard')}>Leaderboard</button>
         <button className={`topnav-link ${currentPage === 'history' ? 'active' : ''}`} onClick={() => onNavigate('history')}>History</button>
+        <button className={`topnav-link ${currentPage === 'chat' ? 'active' : ''}`} onClick={() => onNavigate('chat')}>Chat</button>
       </nav>
 
       <div className="topnav-right">
@@ -63,6 +64,10 @@ export default function TopNav({ participant, balance, inPlay, onNavigate, curre
       <button className={`bottom-tab ${currentPage === 'leaderboard' ? 'active' : ''}`} onClick={() => onNavigate('leaderboard')}>
         <Trophy size={22} />
         <span>Leaderboard</span>
+      </button>
+      <button className={`bottom-tab ${currentPage === 'chat' ? 'active' : ''}`} onClick={() => onNavigate('chat')}>
+        <MessageSquare size={22} />
+        <span>Chat</span>
       </button>
       <button className={`bottom-tab ${currentPage === 'history' ? 'active' : ''}`} onClick={() => onNavigate('history')}>
         <History size={22} />
