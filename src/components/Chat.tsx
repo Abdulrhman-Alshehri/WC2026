@@ -25,7 +25,7 @@ interface Props {
   participants: Participant[];
 }
 
-const EMOJI_LIST = ['⚽', '🔥', '😂', '😮', '👑', '💸'];
+const EMOJI_LIST = ['⚽', '🔥', '😂', '😮', '👑', '💸', '🖕'];
 
 export default function ChatHub({ currentParticipantId, participants }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -55,7 +55,12 @@ export default function ChatHub({ currentParticipantId, participants }: Props) {
       }
     });
 
-    return EMOJI_LIST.map((emoji) => {
+    const orderedEmojis = [
+      ...EMOJI_LIST,
+      ...Object.keys(grouped).filter((emoji) => !EMOJI_LIST.includes(emoji)),
+    ];
+
+    return orderedEmojis.map((emoji) => {
       const pIds = grouped[emoji] || [];
       return {
         emoji,
