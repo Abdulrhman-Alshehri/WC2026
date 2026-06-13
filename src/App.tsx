@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Participant, Match, Prediction, LeaderboardEntry } from './types';
 import { DEMO_PARTICIPANTS } from './lib/data';
@@ -10,9 +10,7 @@ import Leaderboard from './components/Leaderboard';
 import PredictionHistory from './components/PredictionHistory';
 import PredictionModal from './components/PredictionModal';
 import ConfirmModal from './components/ConfirmModal';
-import TransitionOverlay from './components/TransitionOverlay';
 import ProfileSettings from './components/ProfileSettings';
-import { usePageTransition } from './hooks/usePageTransition';
 import ChatHub from './components/Chat';
 import PredictionsViewerModal from './components/PredictionsViewerModal';
 
@@ -28,11 +26,6 @@ function App() {
 
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [previousPage, setPreviousPage] = useState('dashboard');
-  
-  const { videoRef, isActive, isFastActive, navigateWithTransition, handleVideoEnded, playOnce } = usePageTransition({
-    currentPage,
-    onCommitPage: setCurrentPage,
-  });
 
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
   const [activePredictionMatch, setActivePredictionMatch] = useState<Match | null>(null);
@@ -221,30 +214,8 @@ function App() {
 
 
   const handleSelectIdentity = useCallback((participant: Participant) => {
-    playOnce(() => {
-      setCurrentUser(participant);
-      localStorage.setItem('wc2026_user', JSON.stringify(participant));
-    });
-  }, [playOnce]);
-
-  // Intro reveal: play once as soon as the video is ready on first load
-  const introPlayedRef = useRef(false);
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const tryIntro = () => {
-      if (!introPlayedRef.current) {
-        introPlayedRef.current = true;
-        playOnce();
-      }
-    };
-    if (video.readyState >= 3) {
-      tryIntro();
-    } else {
-      video.addEventListener('canplay', tryIntro, { once: true });
-      return () => video.removeEventListener('canplay', tryIntro);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCurrentUser(participant);
+    localStorage.setItem('wc2026_user', JSON.stringify(participant));
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -254,12 +225,12 @@ function App() {
 
   const handleOpenProfile = useCallback(() => {
     setPreviousPage(currentPage);
-    navigateWithTransition('profile');
-  }, [currentPage, navigateWithTransition]);
+    setCurrentPage('profile');
+  }, [currentPage]);
 
   const handleNavigate = useCallback((page: string) => {
-    navigateWithTransition(page);
-  }, [navigateWithTransition]);
+    setCurrentPage(page);
+  }, []);
 
   const handleOpenPredict = useCallback((match: Match) => {
     setPredictingMatch(match);
@@ -500,12 +471,6 @@ function App() {
 
   return (
     <>
-      <TransitionOverlay
-        isActive={isActive}
-        isFastActive={isFastActive}
-        onEnded={handleVideoEnded}
-        videoRef={videoRef}
-      />
       {!currentUser ? (
         <IdentitySelector
           participants={participants}
