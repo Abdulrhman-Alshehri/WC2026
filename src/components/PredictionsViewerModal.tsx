@@ -21,7 +21,7 @@ interface PredictionWithParticipant extends Prediction {
 function getSeedReactions(): Record<string, number> {
   return {
     '👍': 0,
-    '❤️': 0,
+    '🖕': 0,
     '😂': 0,
   };
 }
@@ -200,7 +200,7 @@ export default function PredictionsViewerModal({ match, onClose }: Props) {
 
                     {/* Reactions section */}
                     <div className="pred-row-reactions">
-                      {['👍', '❤️', '😂'].map((emoji) => {
+                      {['👍', '🖕', '😂'].map((emoji) => {
                         const meReacted = localUserReacts.includes(emoji);
                         const displayCount = seed[emoji] + (meReacted ? 1 : 0);
 
