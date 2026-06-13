@@ -1310,6 +1310,7 @@ body,
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  min-height: 0;
 }
 
 @media (max-width: 640px) {
@@ -1337,6 +1338,8 @@ body,
   }
   .elcasino-chat-feed {
     padding: 16px;
+    overflow-y: scroll;
+    overscroll-behavior-y: contain;
   }
 }
 
@@ -1353,16 +1356,14 @@ body,
 .elcasino-chat-feed {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
   touch-action: pan-y;          /* explicitly allow vertical touch scrolling */
-  transform: translateZ(0);     /* own compositor layer: fixes iOS scroll-stuck cases */
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  scroll-behavior: smooth;
 }
 
 /* Chat Row Variations */
@@ -1516,6 +1517,7 @@ body,
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-y;
   animation: fadeIn 0.25s ease-out;
 }
 
@@ -1899,5 +1901,8 @@ body,
   }
   .predictions-modal-card {
     max-width: 100%;
+  }
+  .predictions-modal-body {
+    padding: 16px;
   }
 }
