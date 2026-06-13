@@ -7,9 +7,10 @@ interface Props {
   prediction?: Prediction;
   onPredict: (match: Match) => void;
   onCancelPrediction?: (predictionId: string) => void;
+  onShowPredictions?: (match: Match) => void;
 }
 
-export default function MatchCard({ match, prediction, onPredict, onCancelPrediction }: Props) {
+export default function MatchCard({ match, prediction, onPredict, onCancelPrediction, onShowPredictions }: Props) {
   const isLive = match.status === 'LIVE' || match.status === 'HT';
   const isFinished = match.status === 'FT' || match.status === 'AET' || match.status === 'PEN';
   const windowOpen = isPredictionWindowOpen(match);
@@ -52,19 +53,35 @@ export default function MatchCard({ match, prediction, onPredict, onCancelPredic
       </div>
 
       <div className="match-card-footer">
-        {prediction ? (
+        {isFinished ? (
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '8px' }}>
+            {prediction ? (
+              <div className={`prediction-badge prediction-${prediction.status.toLowerCase()}`}>
+                <span className="prediction-choice">
+                  {prediction.prediction === 'HOME_WIN' || prediction.prediction === 'HOME_ADVANCE' ? match.home_team : prediction.prediction === 'AWAY_WIN' || prediction.prediction === 'AWAY_ADVANCE' ? match.away_team : 'Draw'}
+                </span>
+                <span className="prediction-stake">{new Intl.NumberFormat('en-US').format(prediction.stake)} coins</span>
+                {predictionLabel && predictionLabel !== 'PENDING' && (
+                  <span className={`prediction-result result-${predictionLabel.toLowerCase()}`}>
+                    {predictionLabel}
+                    {prediction.payout != null && predictionLabel === 'WON' && <> +{new Intl.NumberFormat('en-US').format(prediction.payout - prediction.stake)}</>}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="prediction-missed"><span>No prediction</span></div>
+            )}
+            <button className="btn-view-predictions" onClick={() => onShowPredictions?.(match)}>
+              View Predictions
+            </button>
+          </div>
+        ) : prediction ? (
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
             <div className={`prediction-badge prediction-${prediction.status.toLowerCase()}`}>
               <span className="prediction-choice">
                 {prediction.prediction === 'HOME_WIN' || prediction.prediction === 'HOME_ADVANCE' ? match.home_team : prediction.prediction === 'AWAY_WIN' || prediction.prediction === 'AWAY_ADVANCE' ? match.away_team : 'Draw'}
               </span>
               <span className="prediction-stake">{new Intl.NumberFormat('en-US').format(prediction.stake)} coins</span>
-              {predictionLabel && predictionLabel !== 'PENDING' && (
-                <span className={`prediction-result result-${predictionLabel.toLowerCase()}`}>
-                  {predictionLabel}
-                  {prediction.payout != null && predictionLabel === 'WON' && <> +{new Intl.NumberFormat('en-US').format(prediction.payout - prediction.stake)}</>}
-                </span>
-              )}
             </div>
             {windowOpen && prediction.status === 'PENDING' && (
               <div className="prediction-actions">
@@ -81,10 +98,8 @@ export default function MatchCard({ match, prediction, onPredict, onCancelPredic
           </div>
         ) : windowOpen ? (
           <button className="btn-predict" onClick={() => onPredict(match)}>{knockout ? 'Predict Winner' : 'Make Prediction'}</button>
-        ) : !isFinished ? (
-          <div className="prediction-locked"><Lock size={14} className="lock-icon" /><span>No prediction made</span></div>
         ) : (
-          <div className="prediction-missed"><span>No prediction</span></div>
+          <div className="prediction-locked"><Lock size={14} className="lock-icon" /><span>No prediction made</span></div>
         )}
       </div>
     </div>

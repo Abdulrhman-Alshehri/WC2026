@@ -14,6 +14,7 @@ import TransitionOverlay from './components/TransitionOverlay';
 import ProfileSettings from './components/ProfileSettings';
 import { usePageTransition } from './hooks/usePageTransition';
 import ChatHub from './components/Chat';
+import PredictionsViewerModal from './components/PredictionsViewerModal';
 
 function App() {
   const queryClient = useQueryClient();
@@ -34,6 +35,7 @@ function App() {
   });
 
   const [predictingMatch, setPredictingMatch] = useState<Match | null>(null);
+  const [activePredictionMatch, setActivePredictionMatch] = useState<Match | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -527,6 +529,7 @@ function App() {
             predictions={predictions}
             onPredict={handleOpenPredict}
             onCancelPrediction={handleCancelPrediction}
+            onShowPredictions={setActivePredictionMatch}
           />
         )}
         {currentPage === 'leaderboard' && (
@@ -583,6 +586,13 @@ function App() {
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {activePredictionMatch && (
+        <PredictionsViewerModal
+          match={activePredictionMatch}
+          onClose={() => setActivePredictionMatch(null)}
+        />
+      )}
       </div>
       )}
     </>

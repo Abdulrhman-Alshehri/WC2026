@@ -30,13 +30,14 @@ interface Props {
   predictions: Map<string, Prediction>;
   onPredict: (match: Match) => void;
   onCancelPrediction: (predictionId: string) => void;
+  onShowPredictions?: (match: Match) => void;
 }
 
 type MainTab = 'dashboard' | 'groups' | 'knockouts';
 type GroupLetter = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
 type KnockoutRound = 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'FINAL';
 
-export default function Dashboard({ matches, predictions, onPredict, onCancelPrediction }: Props) {
+export default function Dashboard({ matches, predictions, onPredict, onCancelPrediction, onShowPredictions }: Props) {
   const queryClient = useQueryClient();
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('dashboard');
   const [activeGroup, setActiveGroup] = useState<GroupLetter>('A');
@@ -205,7 +206,7 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             <section className="match-section">
               <h3 className="section-title"><span className="live-pulse" />Live Matches</h3>
               <div className="match-grid">
-                {liveMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
+                {liveMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} onShowPredictions={onShowPredictions} />)}
               </div>
             </section>
           )}
@@ -214,7 +215,7 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             <section className="match-section">
               <h3 className="section-title">Upcoming Fixtures</h3>
               <div className="match-grid">
-                {upcomingMatches.slice(0, 6).map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
+                {upcomingMatches.slice(0, 6).map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} onShowPredictions={onShowPredictions} />)}
               </div>
             </section>
           )}
@@ -223,7 +224,7 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             <section className="match-section">
               <h3 className="section-title">Recent Results</h3>
               <div className="match-grid">
-                {finishedMatches.slice(0, 6).map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
+                {finishedMatches.slice(0, 6).map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} onShowPredictions={onShowPredictions} />)}
               </div>
             </section>
           )}
@@ -241,7 +242,7 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             <h3 className="section-title">Group {activeGroup} Fixtures</h3>
             {filteredGroupMatches.length > 0 ? (
               <div className="match-grid">
-                {filteredGroupMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
+                {filteredGroupMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} onShowPredictions={onShowPredictions} />)}
               </div>
             ) : (
               <div className="state-card"><Zap size={20} />No fixtures found for Group {activeGroup}.</div>
@@ -261,7 +262,7 @@ export default function Dashboard({ matches, predictions, onPredict, onCancelPre
             <h3 className="section-title">{knockoutRounds.find(r => r.key === activeKnockout)?.label} Matches</h3>
             {filteredKnockoutMatches.length > 0 ? (
               <div className="match-grid">
-                {filteredKnockoutMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} />)}
+                {filteredKnockoutMatches.map(m => <MatchCard key={m.id} match={m} prediction={predictions.get(m.id)} onPredict={onPredict} onCancelPrediction={onCancelPrediction} onShowPredictions={onShowPredictions} />)}
               </div>
             ) : (
               <div className="state-card"><Trophy size={20} />No matches scheduled or unlocked for this round yet.</div>
