@@ -1378,6 +1378,9 @@ body,
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: rgba(15, 23, 42, 0.94);
+    /* overflow:hidden + border-radius on the parent of the scrolling feed is the
+       same iOS bug that breaks the predictions list — drop the clip on mobile. */
+    overflow: visible;
   }
   .elcasino-chat-feed {
     padding: 16px;
@@ -1548,22 +1551,26 @@ body,
   right: 0;
   bottom: 0;
   background: rgba(10, 11, 20, 0.85);
-  /* NO backdrop-filter here: on iOS Safari a backdrop-filter ancestor breaks
-     -webkit-overflow-scrolling for the predictions list inside this overlay. */
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
+  /* The OVERLAY is the scroll container (not a nested element). iOS Safari
+     scrolls overlay/root containers reliably, whereas a nested
+     -webkit-overflow-scrolling element inside a rounded + overflow:hidden card
+     silently refuses to scroll. No backdrop-filter for the same reason. */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   animation: fadeIn 0.25s ease-out;
 }
 
 .predictions-modal-card {
   width: 100%;
   max-width: 650px;
-  max-height: 80vh;
-  max-height: calc(100dvh - 40px);
-  background: rgba(15, 23, 42, 0.8);
+  margin: auto;   /* center when short; scroll-safe (no top clip) when tall */
+  background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
@@ -1676,13 +1683,7 @@ body,
 
 /* Modal Body */
 .predictions-modal-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  transform: translateZ(0);     /* own compositor layer: fixes iOS scroll-stuck */
+  /* No inner scrolling — the overlay scrolls the whole card (iOS-safe). */
   padding: 24px;
 }
 
@@ -1939,15 +1940,12 @@ body,
     width: 100%;
     justify-content: center !important;
   }
-  /* Bottom-sheet modal on phones so the full predictions list is reachable */
+  /* Mobile: full-width card; the overlay (above) handles all scrolling */
   .predictions-modal-overlay {
-    align-items: flex-end;
-    padding: 0;
+    padding: 12px;
   }
   .predictions-modal-card {
     max-width: 100%;
-    max-height: 92dvh;
-    border-radius: 20px 20px 0 0;
   }
 }
 
