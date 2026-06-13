@@ -62,17 +62,17 @@ export const DEMO_MATCHES: Match[] = [
 ];
 
 export const DEMO_LEADERBOARD: LeaderboardEntry[] = [
-  { participant_id: '1', name: 'Abdulrhman', display_name: 'Abdulrhman', photo_url: '/avatars/Abdulrhman.png', balance: 1250000, rank: 1, delta: 2 },
-  { participant_id: '2', name: 'Aseel', display_name: 'Aseel', photo_url: '/avatars/Aseel.png', balance: 1180000, rank: 2, delta: 1 },
-  { participant_id: '3', name: 'Bijad', display_name: 'Bijad', photo_url: '/avatars/Bijad.png', balance: 1120000, rank: 3, delta: -1 },
-  { participant_id: '4', name: 'Haddad', display_name: 'Haddad', photo_url: '/avatars/Haddad.png', balance: 1050000, rank: 4, delta: 0 },
-  { participant_id: '5', name: 'Hussam', display_name: 'Hussam', photo_url: '/avatars/Hussam.png', balance: 1010000, rank: 5, delta: 3 },
-  { participant_id: '6', name: 'Ibrahim', display_name: 'Ibrahim', photo_url: '/avatars/Ibrahim.png', balance: 980000, rank: 6, delta: -2 },
-  { participant_id: '7', name: 'Khatrawi', display_name: 'Khatrawi', photo_url: '/avatars/Khatrawi.png', balance: 950000, rank: 7, delta: 0 },
-  { participant_id: '8', name: 'Obaid', display_name: 'Obaid', photo_url: '/avatars/Obaid.png', balance: 920000, rank: 8, delta: -1 },
-  { participant_id: '9', name: 'Saleh', display_name: 'Saleh', photo_url: '/avatars/Saleh.png', balance: 880000, rank: 9, delta: 1 },
-  { participant_id: '10', name: 'Turkis', display_name: 'Turkis', photo_url: '/avatars/Turkis.png', balance: 850000, rank: 10, delta: -3 },
-  { participant_id: '11', name: 'Yousef', display_name: 'Yousef', photo_url: '/avatars/Yousef.png', balance: 810000, rank: 11, delta: 0 },
+  { participant_id: '1', name: 'Abdulrhman', display_name: 'Abdulrhman', photo_url: '/avatars/Abdulrhman.png', blinded_balance: 1250000, rank: 1, delta: 2 },
+  { participant_id: '2', name: 'Aseel', display_name: 'Aseel', photo_url: '/avatars/Aseel.png', blinded_balance: 1180000, rank: 2, delta: 1 },
+  { participant_id: '3', name: 'Bijad', display_name: 'Bijad', photo_url: '/avatars/Bijad.png', blinded_balance: 1120000, rank: 3, delta: -1 },
+  { participant_id: '4', name: 'Haddad', display_name: 'Haddad', photo_url: '/avatars/Haddad.png', blinded_balance: 1050000, rank: 4, delta: 0 },
+  { participant_id: '5', name: 'Hussam', display_name: 'Hussam', photo_url: '/avatars/Hussam.png', blinded_balance: 1010000, rank: 5, delta: 3 },
+  { participant_id: '6', name: 'Ibrahim', display_name: 'Ibrahim', photo_url: '/avatars/Ibrahim.png', blinded_balance: 980000, rank: 6, delta: -2 },
+  { participant_id: '7', name: 'Khatrawi', display_name: 'Khatrawi', photo_url: '/avatars/Khatrawi.png', blinded_balance: 950000, rank: 7, delta: 0 },
+  { participant_id: '8', name: 'Obaid', display_name: 'Obaid', photo_url: '/avatars/Obaid.png', blinded_balance: 920000, rank: 8, delta: -1 },
+  { participant_id: '9', name: 'Saleh', display_name: 'Saleh', photo_url: '/avatars/Saleh.png', blinded_balance: 880000, rank: 9, delta: 1 },
+  { participant_id: '10', name: 'Turkis', display_name: 'Turkis', photo_url: '/avatars/Turkis.png', blinded_balance: 850000, rank: 10, delta: -3 },
+  { participant_id: '11', name: 'Yousef', display_name: 'Yousef', photo_url: '/avatars/Yousef.png', blinded_balance: 810000, rank: 11, delta: 0 },
 ];
 
 // Country code to flag emoji mapping

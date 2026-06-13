@@ -69,7 +69,7 @@ export interface LeaderboardEntry {
   name: string;
   display_name: string | null;
   photo_url: string | null;
-  balance: number;
+  blinded_balance: number;
   rank: number;
   delta?: number;
 }

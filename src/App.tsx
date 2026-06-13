@@ -76,17 +76,67 @@ function App() {
   const { data: leaderboard = [] } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
-      // Ideally this hits a leaderboard_view. For now, doing the joined select:
-      const { data } = await supabase.from('wallets').select('balance, participant_id, in_play, participants ( name, display_name, photo_url )').order('balance', { ascending: false });
-      if (!data) return [];
-      return data.map((w: any, index: number) => ({
-        participant_id: w.participant_id,
-        name: w.participants.name,
-        display_name: w.participants.display_name,
-        photo_url: w.participants.photo_url,
-        balance: w.balance,
-        rank: index + 1,
-      }));
+      // 1. Query the blinded balance view (balance + in_play, never raw columns)
+      const { data: viewData, error: viewError } = await supabase
+        .from('leaderboard_view')
+        .select('participant_id, name, display_name, photo_url, blinded_balance, rank');
+
+      if (viewError) {
+        console.error('[App.tsx] Error loading leaderboard view:', viewError.message);
+      }
+
+      // Fallback: if wallets are not yet initialized, show all participants at starting balance
+      if (!viewData || viewData.length === 0) {
+        const { data: fallbackParticipants } = await supabase
+          .from('participants')
+          .select('id, name, display_name, photo_url')
+          .eq('is_active', true)
+          .order('name');
+
+        if (!fallbackParticipants) return [];
+        return fallbackParticipants.map((p: any, idx: number) => ({
+          participant_id: p.id,
+          name: p.name,
+          display_name: p.display_name,
+          photo_url: p.photo_url,
+          blinded_balance: 1000000,
+          rank: idx + 1,
+          delta: 0,
+        })) as LeaderboardEntry[];
+      }
+
+      // 2. Fetch the latest leaderboard snapshot for rank-delta calculation
+      const { data: snapshotRows } = await supabase
+        .from('leaderboard_snapshots')
+        .select('snapshot')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const previousSnapshot = snapshotRows?.[0]?.snapshot as
+        Array<{ participant_id: string; rank: number }> | undefined;
+
+      // 3. Map view data with computed deltas
+      return viewData.map((item: any) => {
+        let delta = 0;
+        if (previousSnapshot) {
+          const prev = previousSnapshot.find(
+            (s: any) => s.participant_id === item.participant_id
+          );
+          if (prev) {
+            // Positive delta = climbed toward rank 1
+            delta = prev.rank - item.rank;
+          }
+        }
+        return {
+          participant_id: item.participant_id,
+          name: item.name,
+          display_name: item.display_name,
+          photo_url: item.photo_url,
+          blinded_balance: item.blinded_balance,
+          rank: item.rank,
+          delta,
+        } as LeaderboardEntry;
+      });
     },
   });
 
