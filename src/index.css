@@ -1547,9 +1547,9 @@ body,
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(10, 11, 20, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 11, 20, 0.85);
+  /* NO backdrop-filter here: on iOS Safari a backdrop-filter ancestor breaks
+     -webkit-overflow-scrolling for the predictions list inside this overlay. */
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -1574,6 +1574,7 @@ body,
 }
 
 .predictions-modal-header {
+  flex: 0 0 auto;
   padding: 20px 24px;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -1615,6 +1616,7 @@ body,
 
 /* Match result summary bar */
 .predictions-modal-summary {
+  flex: 0 0 auto;
   padding: 16px 24px;
   background: rgba(255, 255, 255, 0.01);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
@@ -1674,11 +1676,13 @@ body,
 
 /* Modal Body */
 .predictions-modal-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-y;
+  transform: translateZ(0);     /* own compositor layer: fixes iOS scroll-stuck */
   padding: 24px;
 }
 
