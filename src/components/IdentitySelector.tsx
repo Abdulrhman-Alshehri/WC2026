@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Participant } from '../types';
 import { getAvatarColor } from '../lib/data';
 import { supabase } from '../lib/supabase';
-import AddUserModal from './AddUserModal';
 
 interface Props {
   participants: Participant[];
@@ -13,7 +11,6 @@ interface Props {
 type Step = 'select' | 'pin-entry' | 'pin-setup';
 
 export default function IdentitySelector({ participants, onSelect }: Props) {
-  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('select');
   const [selectedUser, setSelectedUser] = useState<Participant | null>(null);
   const [pin, setPin] = useState(['', '', '', '']);
@@ -21,11 +18,8 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
   const [isConfirmStep, setIsConfirmStep] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [highlightedUserId, setHighlightedUserId] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const confirmRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     if (step === 'pin-entry' || step === 'pin-setup') {
@@ -38,21 +32,6 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
       confirmRefs.current[0]?.focus();
     }
   }, [isConfirmStep]);
-
-  useEffect(() => {
-    if (!highlightedUserId) return;
-    const card = cardRefs.current[highlightedUserId];
-    if (!card) return;
-
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const timeout = window.setTimeout(() => {
-      setHighlightedUserId(null);
-    }, 6000);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [highlightedUserId, participants]);
 
   const handleCardClick = (participant: Participant) => {
     setSelectedUser(participant);
@@ -160,12 +139,6 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
     setIsConfirmStep(false);
   };
 
-  const handleUserCreated = async (participant: Participant) => {
-    setIsAddModalOpen(false);
-    setHighlightedUserId(participant.id);
-    await queryClient.invalidateQueries({ queryKey: ['participants'] });
-  };
-
   // Auto-submit when all 4 digits are entered
   useEffect(() => {
     const entered = pin.join('');
@@ -190,10 +163,7 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
               return (
                 <button
                   key={p.id}
-                  ref={(el) => {
-                    cardRefs.current[p.id] = el;
-                  }}
-                  className={`identity-card ${highlightedUserId === p.id ? 'identity-card-highlighted' : ''}`}
+                  className="identity-card"
                   onClick={() => handleCardClick(p)}
                 >
                   <div className="identity-avatar" style={{ background: color }}>
@@ -205,22 +175,7 @@ export default function IdentitySelector({ participants, onSelect }: Props) {
               );
             })}
           </div>
-          <div className="identity-add-row">
-            <button
-              type="button"
-              className="identity-add-trigger"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              Add New User
-            </button>
-          </div>
         </div>
-        <AddUserModal
-          isOpen={isAddModalOpen}
-          participants={participants}
-          onClose={() => setIsAddModalOpen(false)}
-          onCreated={handleUserCreated}
-        />
       </div>
     );
   }
